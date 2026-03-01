@@ -1,0 +1,173 @@
+{
+  "$schema": "https://railway.com/railway.schema.json",
+  "build": {
+    "builder": "DOCKERFILE"
+  },
+  "deploy": {
+    "restartPolicyType": "ON_FAILURE",
+    "restartPolicyMaxRetries": 3
+  },
+  "services": [
+    {
+      "name": "gateway",
+      "build": {
+        "builder": "DOCKERFILE",
+        "dockerfilePath": "gateway/Dockerfile",
+        "watchPatterns": ["gateway/**", "shared/**", "requirements.txt"]
+      },
+      "deploy": {
+        "healthcheckPath": "/health",
+        "healthcheckTimeout": 300,
+        "restartPolicyType": "ON_FAILURE",
+        "restartPolicyMaxRetries": 3
+      },
+      "variables": {
+        "ENVIRONMENT": "production",
+        "SECRET_KEY": "${{shared.SECRET_KEY}}",
+        "JWT_ALGORITHM": "HS256",
+        "JWT_EXPIRY_MINUTES": "60",
+        "USER_SERVICE_URL": "http://user-service.railway.internal:8001",
+        "GRAPH_QUERY_SERVICE_URL": "http://graph-query-service.railway.internal:8002",
+        "AI_REASONING_SERVICE_URL": "http://ai-reasoning-service.railway.internal:8003",
+        "INTEGRATION_SERVICE_URL": "http://integration-service.railway.internal:8004",
+        "NOTIFICATION_SERVICE_URL": "http://notification-service.railway.internal:8005",
+        "ANALYTICS_SERVICE_URL": "http://analytics-service.railway.internal:8006",
+        "ALLOWED_ORIGINS": "*",
+        "RATE_LIMIT_REQUESTS": "100",
+        "RATE_LIMIT_WINDOW_SECONDS": "60"
+      }
+    },
+    {
+      "name": "user-service",
+      "build": {
+        "builder": "DOCKERFILE",
+        "dockerfilePath": "services/user_service/Dockerfile",
+        "watchPatterns": ["services/user_service/**", "shared/**", "requirements.txt"]
+      },
+      "deploy": {
+        "healthcheckPath": "/health",
+        "healthcheckTimeout": 300,
+        "restartPolicyType": "ON_FAILURE",
+        "restartPolicyMaxRetries": 3
+      },
+      "variables": {
+        "ENVIRONMENT": "production",
+        "SECRET_KEY": "${{shared.SECRET_KEY}}",
+        "JWT_ALGORITHM": "HS256",
+        "JWT_EXPIRY_MINUTES": "60",
+        "REFRESH_TOKEN_EXPIRY_DAYS": "30",
+        "REDIS_URL": "${{Redis.REDIS_URL}}",
+        "WEB_CONCURRENCY": "2"
+      }
+    },
+    {
+      "name": "graph-query-service",
+      "build": {
+        "builder": "DOCKERFILE",
+        "dockerfilePath": "services/graph_query_service/Dockerfile",
+        "watchPatterns": ["services/graph_query_service/**", "shared/**", "requirements.txt"]
+      },
+      "deploy": {
+        "healthcheckPath": "/health",
+        "healthcheckTimeout": 300,
+        "restartPolicyType": "ON_FAILURE",
+        "restartPolicyMaxRetries": 3
+      },
+      "variables": {
+        "ENVIRONMENT": "production",
+        "SECRET_KEY": "${{shared.SECRET_KEY}}",
+        "NEO4J_URI": "bolt://your-neo4j-host:7687",
+        "NEO4J_USER": "neo4j",
+        "CACHE_TTL_SECONDS": "300",
+        "REDIS_URL": "${{Redis.REDIS_URL}}",
+        "WEB_CONCURRENCY": "2"
+      }
+    },
+    {
+      "name": "ai-reasoning-service",
+      "build": {
+        "builder": "DOCKERFILE",
+        "dockerfilePath": "services/ai_reasoning_service/Dockerfile",
+        "watchPatterns": ["services/ai_reasoning_service/**", "shared/**", "requirements.txt"]
+      },
+      "deploy": {
+        "healthcheckPath": "/health",
+        "healthcheckTimeout": 300,
+        "restartPolicyType": "ON_FAILURE",
+        "restartPolicyMaxRetries": 3
+      },
+      "variables": {
+        "ENVIRONMENT": "production",
+        "SECRET_KEY": "${{shared.SECRET_KEY}}",
+        "GEMINI_MODEL": "gemini-1.5-pro",
+        "AI_RATE_LIMIT_RPM": "60",
+        "REDIS_URL": "${{Redis.REDIS_URL}}",
+        "WEB_CONCURRENCY": "2"
+      }
+    },
+    {
+      "name": "integration-service",
+      "build": {
+        "builder": "DOCKERFILE",
+        "dockerfilePath": "services/integration_service/Dockerfile",
+        "watchPatterns": ["services/integration_service/**", "shared/**", "requirements.txt"]
+      },
+      "deploy": {
+        "healthcheckPath": "/health",
+        "healthcheckTimeout": 300,
+        "restartPolicyType": "ON_FAILURE",
+        "restartPolicyMaxRetries": 3
+      },
+      "variables": {
+        "ENVIRONMENT": "production",
+        "SECRET_KEY": "${{shared.SECRET_KEY}}",
+        "REDIS_URL": "${{Redis.REDIS_URL}}",
+        "WORKERS": "2"
+      }
+    },
+    {
+      "name": "notification-service",
+      "build": {
+        "builder": "DOCKERFILE",
+        "dockerfilePath": "services/notification_service/Dockerfile",
+        "watchPatterns": ["services/notification_service/**", "shared/**", "requirements.txt"]
+      },
+      "deploy": {
+        "healthcheckPath": "/health",
+        "healthcheckTimeout": 300,
+        "restartPolicyType": "ON_FAILURE",
+        "restartPolicyMaxRetries": 3
+      },
+      "variables": {
+        "ENVIRONMENT": "production",
+        "SECRET_KEY": "${{shared.SECRET_KEY}}",
+        "REDIS_URL": "${{Redis.REDIS_URL}}",
+        "WEB_CONCURRENCY": "2"
+      }
+    },
+    {
+      "name": "analytics-service",
+      "build": {
+        "builder": "DOCKERFILE",
+        "dockerfilePath": "services/analytics_service/Dockerfile",
+        "watchPatterns": ["services/analytics_service/**", "shared/**", "requirements.txt"]
+      },
+      "deploy": {
+        "healthcheckPath": "/health",
+        "healthcheckTimeout": 300,
+        "restartPolicyType": "ON_FAILURE",
+        "restartPolicyMaxRetries": 3
+      },
+      "variables": {
+        "ENVIRONMENT": "production",
+        "SECRET_KEY": "${{shared.SECRET_KEY}}",
+        "REDIS_URL": "${{Redis.REDIS_URL}}",
+        "WEB_CONCURRENCY": "2"
+      }
+    },
+    {
+      "name": "Redis",
+      "plugin": "redis"
+    }
+  ]
+}
