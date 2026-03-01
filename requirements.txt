@@ -1,5 +1,4 @@
 # ZenSensei Backend - Production Requirements
-# Generated from pyproject.toml
 
 fastapi>=0.104.0
 uvicorn[standard]>=0.24.0

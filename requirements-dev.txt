@@ -1,5 +1,4 @@
 # ZenSensei Backend - Development Requirements
-# Install with: pip install -r requirements.txt -r requirements-dev.txt
 
 -r requirements.txt
 

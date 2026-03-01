@@ -1,6 +1,6 @@
-# Railway service config - User Service
+# Railway service config -- User Service
 # Root Directory: . (repo root)
-# Dockerfile: services/user_service/Dockerfile
+# Dockerfile:     services/user_service/Dockerfile
 
 [build]
 builder = "DOCKERFILE"
@@ -11,9 +11,3 @@ healthcheckPath = "/health"
 healthcheckTimeout = 300
 restartPolicyType = "ON_FAILURE"
 restartPolicyMaxRetries = 3
-
-# Environment variables required:
-# PORT, ENVIRONMENT, SECRET_KEY, JWT_ALGORITHM, JWT_EXPIRY_MINUTES
-# REFRESH_TOKEN_EXPIRY_DAYS, FIRESTORE_PROJECT_ID, REDIS_URL
-# SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASSWORD, EMAIL_FROM
-# WEB_CONCURRENCY
