@@ -1,0 +1,10 @@
+[build-system]
+requires = ["setuptools>=68.0", "wheel"]
+build-backend = "setuptools.backends.legacy:build"
+
+[project]
+name = "zensensei-backend"
+version = "0.1.0"
+description = "ZenSensei AI-Powered Personal Intelligence Platform - Backend"
+readme = "README.md"
+requires-python = ">=3.11"
