@@ -1,0 +1,205 @@
+{
+  "insights": [
+    {
+      "id": "ins-pr01-4a7b-8c9d-0e1f2a3b4c5d",
+      "user_id": "a1b2c3d4-0001-4e5f-8a6b-7c8d9e0f1a2b",
+      "insight_type": "pattern",
+      "title": "Peak Productivity Window Detected",
+      "summary": "You complete 73% of your deep work tasks between 2 PM and 6 PM on weekdays. Consider protecting this window from meetings.",
+      "confidence": 0.89,
+      "severity": "info",
+      "status": "acted_upon",
+      "evidence": [
+        {
+          "type": "calendar_analysis",
+          "description": "Task completion timestamps analyzed over 28 days",
+          "data_points": 47
+        },
+        {
+          "type": "focus_score",
+          "description": "Context-switch events below threshold 2-6pm",
+          "data_points": 12
+        }
+      ],
+      "recommendations": [
+        {
+          "id": "rec-pr01-01",
+          "action": "Block 2pm-6pm daily on Google Calendar as Focus Time",
+          "priority": "high",
+          "effort": "low",
+          "accepted": true,
+          "accepted_at": "2026-02-28T14:15:00Z"
+        },
+        {
+          "id": "rec-pr01-02",
+          "action": "Decline non-urgent meetings that overlap with focus window",
+          "priority": "medium",
+          "effort": "medium",
+          "accepted": null
+        }
+      ],
+      "generated_at": "2026-02-28T13:00:00Z",
+      "expires_at": "2026-03-14T13:00:00Z"
+    },
+    {
+      "id": "ins-fn01-4a7b-8c9d-0e1f2a3b4c5d",
+      "user_id": "a1b2c3d4-0001-4e5f-8a6b-7c8d9e0f1a2b",
+      "insight_type": "financial",
+      "title": "Subscription Spending 34% Above Budget",
+      "summary": "Your subscription services total $312/month, 34% above your $232 budget. Three services show minimal usage: two streaming platforms and a gym app.",
+      "confidence": 0.95,
+      "severity": "warning",
+      "status": "pending",
+      "evidence": [
+        {
+          "type": "plaid_transactions",
+          "description": "Recurring charges from connected bank account",
+          "data_points": 18
+        },
+        {
+          "type": "usage_correlation",
+          "description": "Cross-referenced with Spotify and calendar activity logs",
+          "data_points": 6
+        }
+      ],
+      "recommendations": [
+        {
+          "id": "rec-fn01-01",
+          "action": "Cancel Netflix ($15.99/mo) — 0 streams in 47 days",
+          "priority": "high",
+          "effort": "low",
+          "estimated_monthly_saving": 15.99,
+          "accepted": null
+        },
+        {
+          "id": "rec-fn01-02",
+          "action": "Cancel Headspace ($12.99/mo) — 0 sessions in 30 days",
+          "priority": "high",
+          "effort": "low",
+          "estimated_monthly_saving": 12.99,
+          "accepted": null
+        },
+        {
+          "id": "rec-fn01-03",
+          "action": "Review GymApp Pro ($9.99/mo) — last used 62 days ago",
+          "priority": "medium",
+          "effort": "low",
+          "estimated_monthly_saving": 9.99,
+          "accepted": null
+        }
+      ],
+      "generated_at": "2026-02-27T06:00:00Z",
+      "expires_at": "2026-03-13T06:00:00Z"
+    },
+    {
+      "id": "ins-sl01-4a7b-8c9d-0e1f2a3b4c5d",
+      "user_id": "a1b2c3d4-0001-4e5f-8a6b-7c8d9e0f1a2b",
+      "insight_type": "wellness",
+      "title": "Sleep Consistency Correlated With Task Performance",
+      "summary": "On days you sleep 7+ hours, you complete 2.3x more tasks and rate your mood 40% higher. Your average sleep this month is 6.2 hours.",
+      "confidence": 0.82,
+      "severity": "suggestion",
+      "status": "viewed",
+      "evidence": [
+        {
+          "type": "calendar_pattern",
+          "description": "Inferred from calendar end-of-day and morning event times",
+          "data_points": 28
+        },
+        {
+          "type": "task_completion_correlation",
+          "description": "Tasks completed per day vs. inferred sleep duration",
+          "correlation_coefficient": 0.74
+        }
+      ],
+      "recommendations": [
+        {
+          "id": "rec-sl01-01",
+          "action": "Set a 10pm phone notification as your wind-down reminder",
+          "priority": "medium",
+          "effort": "low",
+          "accepted": null
+        },
+        {
+          "id": "rec-sl01-02",
+          "action": "Move late evening meetings before 8pm",
+          "priority": "medium",
+          "effort": "medium",
+          "accepted": null
+        }
+      ],
+      "generated_at": "2026-02-26T07:00:00Z",
+      "expires_at": "2026-03-12T07:00:00Z"
+    },
+    {
+      "id": "ins-sk01-4a7b-8c9d-0e1f2a3b4c5d",
+      "user_id": "a1b2c3d4-0001-4e5f-8a6b-7c8d9e0f1a2b",
+      "insight_type": "skill_gap",
+      "title": "System Design Skills Lagging Behind Career Goal",
+      "summary": "Your \"Accelerate Career Growth\" goal requires system design expertise, but your calendar shows no dedicated learning time in the past 3 weeks. Peers at your level average 3 hours/week.",
+      "confidence": 0.77,
+      "severity": "warning",
+      "status": "pending",
+      "evidence": [
+        {
+          "type": "graph_analysis",
+          "description": "Knowledge graph gap between current skills and goal requirements",
+          "missing_skills": ["distributed-systems", "database-sharding", "consensus-algorithms"]
+        },
+        {
+          "type": "calendar_analysis",
+          "description": "Learning time blocks in past 21 days",
+          "learning_hours_detected": 1.5
+        }
+      ],
+      "recommendations": [
+        {
+          "id": "rec-sk01-01",
+          "action": "Schedule 90-min \"System Design\" block every Tuesday morning",
+          "priority": "high",
+          "effort": "low",
+          "accepted": null
+        },
+        {
+          "id": "rec-sk01-02",
+          "action": "Complete \"Designing Data-Intensive Applications\" chapter 5-7 this week",
+          "priority": "high",
+          "effort": "high",
+          "accepted": null
+        }
+      ],
+      "generated_at": "2026-02-25T08:00:00Z",
+      "expires_at": "2026-03-11T08:00:00Z"
+    },
+    {
+      "id": "ins-rl01-4a7b-8c9d-0e1f2a3b4c5d",
+      "user_id": "a1b2c3d4-0001-4e5f-8a6b-7c8d9e0f1a2b",
+      "insight_type": "relationship",
+      "title": "Important Relationship Slipping",
+      "summary": "You haven't interacted with your close contact \"Marcus Williams\" in 47 days. You typically connect every 2 weeks.",
+      "confidence": 0.91,
+      "severity": "warning",
+      "status": "pending",
+      "evidence": [
+        {
+          "type": "calendar_history",
+          "description": "Shared calendar events and Gmail thread history",
+          "last_interaction": "2026-01-12T19:00:00Z",
+          "average_cadence_days": 14
+        }
+      ],
+      "recommendations": [
+        {
+          "id": "rec-rl01-01",
+          "action": "Send Marcus a quick message this week",
+          "priority": "medium",
+          "effort": "low",
+          "accepted": null,
+          "draft_message": "Hey Marcus! It's been a while \u2014 how are things going? Would love to catch up over coffee soon."
+        }
+      ],
+      "generated_at": "2026-02-28T09:00:00Z",
+      "expires_at": "2026-03-14T09:00:00Z"
+    }
+  ]
+}

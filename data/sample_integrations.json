@@ -1,0 +1,126 @@
+{
+  "integrations": [
+    {
+      "id": "intg-gc01-4a7b-8c9d-0e1f2a3b4c5d",
+      "user_id": "a1b2c3d4-0001-4e5f-8a6b-7c8d9e0f1a2b",
+      "integration_type": "google_calendar",
+      "display_name": "Google Calendar",
+      "status": "connected",
+      "scopes_granted": [
+        "https://www.googleapis.com/auth/calendar.readonly",
+        "https://www.googleapis.com/auth/calendar.events"
+      ],
+      "last_synced_at": "2026-02-28T06:00:00Z",
+      "sync_frequency_minutes": 15,
+      "sync_stats": {
+        "total_events_synced": 347,
+        "last_sync_events": 8,
+        "errors_last_30d": 0
+      },
+      "settings": {
+        "sync_past_days": 30,
+        "sync_future_days": 90,
+        "excluded_calendars": ["Holidays in United States"]
+      },
+      "connected_at": "2026-01-10T08:30:00Z",
+      "expires_at": "2026-04-10T08:30:00Z"
+    },
+    {
+      "id": "intg-gm01-4a7b-8c9d-0e1f2a3b4c5d",
+      "user_id": "a1b2c3d4-0001-4e5f-8a6b-7c8d9e0f1a2b",
+      "integration_type": "gmail",
+      "display_name": "Gmail",
+      "status": "connected",
+      "scopes_granted": [
+        "https://www.googleapis.com/auth/gmail.readonly",
+        "https://www.googleapis.com/auth/gmail.labels"
+      ],
+      "last_synced_at": "2026-02-28T06:10:00Z",
+      "sync_frequency_minutes": 30,
+      "sync_stats": {
+        "threads_analyzed": 1284,
+        "action_items_extracted": 23,
+        "errors_last_30d": 1
+      },
+      "settings": {
+        "analyze_sent": true,
+        "analyze_inbox": true,
+        "excluded_senders": ["noreply@", "no-reply@"],
+        "extract_action_items": true
+      },
+      "connected_at": "2026-01-10T08:35:00Z",
+      "expires_at": "2026-04-10T08:35:00Z"
+    },
+    {
+      "id": "intg-nt01-4a7b-8c9d-0e1f2a3b4c5d",
+      "user_id": "a1b2c3d4-0001-4e5f-8a6b-7c8d9e0f1a2b",
+      "integration_type": "notion",
+      "display_name": "Notion",
+      "status": "connected",
+      "scopes_granted": ["read_content", "update_content", "insert_content"],
+      "last_synced_at": "2026-02-28T07:00:00Z",
+      "sync_frequency_minutes": 60,
+      "sync_stats": {
+        "pages_indexed": 87,
+        "tasks_imported": 34,
+        "errors_last_30d": 0
+      },
+      "settings": {
+        "sync_databases": true,
+        "sync_pages": true,
+        "write_back_tasks": false
+      },
+      "connected_at": "2026-01-12T10:00:00Z",
+      "expires_at": "2026-07-12T10:00:00Z"
+    },
+    {
+      "id": "intg-pl01-4a7b-8c9d-0e1f2a3b4c5d",
+      "user_id": "a1b2c3d4-0001-4e5f-8a6b-7c8d9e0f1a2b",
+      "integration_type": "plaid",
+      "display_name": "Chase Bank (via Plaid)",
+      "status": "connected",
+      "institution": "Chase",
+      "account_types": ["checking", "savings"],
+      "last_synced_at": "2026-02-28T02:00:00Z",
+      "sync_frequency_minutes": 720,
+      "sync_stats": {
+        "transactions_synced": 412,
+        "categories_detected": 18,
+        "errors_last_30d": 0
+      },
+      "settings": {
+        "sync_transactions": true,
+        "sync_balances": true,
+        "categorize_transactions": true
+      },
+      "connected_at": "2026-01-14T14:00:00Z",
+      "expires_at": "2026-04-14T14:00:00Z"
+    },
+    {
+      "id": "intg-sp01-4a7b-8c9d-0e1f2a3b4c5d",
+      "user_id": "a1b2c3d4-0001-4e5f-8a6b-7c8d9e0f1a2b",
+      "integration_type": "spotify",
+      "display_name": "Spotify",
+      "status": "connected",
+      "scopes_granted": [
+        "user-read-recently-played",
+        "user-read-playback-state",
+        "user-top-read"
+      ],
+      "last_synced_at": "2026-02-28T06:05:00Z",
+      "sync_frequency_minutes": 60,
+      "sync_stats": {
+        "tracks_analyzed": 1847,
+        "mood_patterns_detected": 6,
+        "errors_last_30d": 0
+      },
+      "settings": {
+        "analyze_mood": true,
+        "correlate_with_productivity": true,
+        "top_genres": ["lo-fi", "ambient", "classical"]
+      },
+      "connected_at": "2026-01-16T20:00:00Z",
+      "expires_at": "2026-04-16T20:00:00Z"
+    }
+  ]
+}

@@ -1,0 +1,252 @@
+name: ZenSensei CI/CD Pipeline
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+
+env:
+  PYTHON_VERSION: "3.11"
+  REGISTRY: gcr.io
+
+jobs:
+  # ─── Lint ─────────────────────────────────────────────────────────────────
+  lint:
+    name: Lint & Type Check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python ${{ env.PYTHON_VERSION }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+
+      - name: Install linting tools
+        run: pip install ruff black mypy
+
+      - name: Run Ruff (linting)
+        run: ruff check .
+
+      - name: Run Black (formatting check)
+        run: black --check .
+
+      - name: Run Mypy (type checking)
+        run: mypy shared/ services/ gateway/
+
+  # ─── Test ─────────────────────────────────────────────────────────────────
+  test:
+    name: Run Tests
+    runs-on: ubuntu-latest
+    needs: lint
+    services:
+      neo4j:
+        image: neo4j:5.14
+        ports:
+          - "7687:7687"
+        env:
+          NEO4J_AUTH: neo4j/test
+        options: >-
+          --health-cmd "neo4j status"
+          --health-interval 15s
+          --health-timeout 10s
+          --health-retries 10
+      redis:
+        image: redis:7
+        ports:
+          - "6379:6379"
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python ${{ env.PYTHON_VERSION }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt -r requirements-dev.txt
+
+      - name: Run tests with coverage
+        run: |
+          pytest tests/ \
+            --cov=services \
+            --cov=shared \
+            --cov=gateway \
+            --cov-report=xml \
+            --cov-report=term-missing \
+            -v \
+            --tb=short
+        env:
+          NEO4J_URI: bolt://localhost:7687
+          NEO4J_USERNAME: neo4j
+          NEO4J_PASSWORD: test
+          REDIS_HOST: localhost
+          REDIS_PORT: 6379
+          ENVIRONMENT: test
+          SECRET_KEY: test-secret-key-for-ci-only
+
+      - name: Upload coverage report
+        uses: codecov/codecov-action@v3
+        with:
+          file: ./coverage.xml
+          fail_ci_if_error: false
+
+  # ─── Build ────────────────────────────────────────────────────────────────
+  build:
+    name: Build & Push Docker Images
+    needs: test
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        service:
+          - user-service
+          - graph-query-service
+          - ai-reasoning-service
+          - integration-service
+          - notification-service
+          - analytics-service
+          - gateway
+      fail-fast: false
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Configure Docker for GCR
+        run: gcloud auth configure-docker --quiet
+
+      - name: Determine Dockerfile path
+        id: dockerfile
+        run: |
+          SERVICE="${{ matrix.service }}"
+          # Map kebab-case service name to snake_case directory
+          SERVICE_DIR=$(echo "$SERVICE" | tr '-' '_')
+          if [ "$SERVICE" = "gateway" ]; then
+            DOCKERFILE="services/api_gateway/Dockerfile"
+          else
+            DOCKERFILE="services/${SERVICE_DIR}/Dockerfile"
+          fi
+          echo "path=$DOCKERFILE" >> "$GITHUB_OUTPUT"
+
+      - name: Build Docker image
+        run: |
+          docker build \
+            --tag ${{ env.REGISTRY }}/${{ secrets.GCP_PROJECT_ID }}/${{ matrix.service }}:${{ github.sha }} \
+            --tag ${{ env.REGISTRY }}/${{ secrets.GCP_PROJECT_ID }}/${{ matrix.service }}:latest \
+            --label "git-commit=${{ github.sha }}" \
+            --label "built-by=github-actions" \
+            --cache-from ${{ env.REGISTRY }}/${{ secrets.GCP_PROJECT_ID }}/${{ matrix.service }}:latest \
+            --build-arg BUILDKIT_INLINE_CACHE=1 \
+            -f ${{ steps.dockerfile.outputs.path }} \
+            .
+
+      - name: Push Docker image
+        run: |
+          docker push ${{ env.REGISTRY }}/${{ secrets.GCP_PROJECT_ID }}/${{ matrix.service }}:${{ github.sha }}
+          docker push ${{ env.REGISTRY }}/${{ secrets.GCP_PROJECT_ID }}/${{ matrix.service }}:latest
+
+  # ─── Deploy ───────────────────────────────────────────────────────────────
+  deploy:
+    name: Deploy to Cloud Run
+    needs: build
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        service:
+          - user-service
+          - graph-query-service
+          - ai-reasoning-service
+          - integration-service
+          - notification-service
+          - analytics-service
+          - gateway
+      # Deploy services in order (gateway last since it depends on the others)
+      max-parallel: 6
+    permissions:
+      contents: read
+      id-token: write
+    environment: production
+    steps:
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Deploy to Cloud Run
+        run: |
+          gcloud run deploy ${{ matrix.service }} \
+            --image ${{ env.REGISTRY }}/${{ secrets.GCP_PROJECT_ID }}/${{ matrix.service }}:${{ github.sha }} \
+            --region us-central1 \
+            --platform managed \
+            --project ${{ secrets.GCP_PROJECT_ID }} \
+            --no-traffic \
+            --quiet
+
+      - name: Shift traffic to new revision
+        run: |
+          gcloud run services update-traffic ${{ matrix.service }} \
+            --region us-central1 \
+            --to-latest \
+            --project ${{ secrets.GCP_PROJECT_ID }}
+
+      - name: Verify deployment health
+        run: |
+          SERVICE_URL=$(gcloud run services describe ${{ matrix.service }} \
+            --region us-central1 \
+            --project ${{ secrets.GCP_PROJECT_ID }} \
+            --format='value(status.url)')
+          echo "Service deployed at: $SERVICE_URL"
+          # Wait for health check
+          for i in {1..10}; do
+            HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" "$SERVICE_URL/health" || echo "000")
+            if [ "$HTTP_STATUS" = "200" ]; then
+              echo "Health check passed (attempt $i)"
+              break
+            fi
+            echo "Attempt $i: HTTP $HTTP_STATUS — retrying in 10s…"
+            sleep 10
+          done
+
+  # ─── Notify ───────────────────────────────────────────────────────────────
+  notify:
+    name: Deployment Notification
+    needs: deploy
+    if: always() && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Notify success
+        if: needs.deploy.result == 'success'
+        run: |
+          echo "All services deployed successfully at commit ${{ github.sha }}"
+          # Add Slack/PagerDuty/email notification here
+
+      - name: Notify failure
+        if: needs.deploy.result != 'success'
+        run: |
+          echo "Deployment failed for one or more services at commit ${{ github.sha }}"
+          exit 1

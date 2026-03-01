@@ -1,0 +1,121 @@
+{
+  "_meta": {
+    "description": "Sample analytics data for ZenSensei local development",
+    "version": "1.0.0",
+    "generated": "2026-02-28"
+  },
+  "dashboards": [
+    {
+      "id": "dash-01-4a7b-8c9d-0e1f2a3b4c5d",
+      "user_id": "a1b2c3d4-0001-4e5f-8a6b-7c8d9e0f1a2b",
+      "name": "Personal Productivity Overview",
+      "description": "Track task completion, goal progress, and daily activity",
+      "widgets": [
+        {
+          "widget_id": "w-001",
+          "type": "line_chart",
+          "title": "Task Completion Over Time",
+          "metric": "tasks_completed",
+          "time_range": "30d",
+          "position": {"row": 0, "col": 0, "width": 6, "height": 4}
+        },
+        {
+          "widget_id": "w-002",
+          "type": "gauge",
+          "title": "Goal Completion Rate",
+          "metric": "goal_completion_rate",
+          "time_range": "7d",
+          "position": {"row": 0, "col": 6, "width": 3, "height": 4}
+        },
+        {
+          "widget_id": "w-003",
+          "type": "bar_chart",
+          "title": "Activity by Category",
+          "metric": "events_by_category",
+          "time_range": "7d",
+          "position": {"row": 4, "col": 0, "width": 9, "height": 4}
+        }
+      ],
+      "created_at": "2026-01-15T10:00:00Z",
+      "updated_at": "2026-02-20T14:30:00Z"
+    }
+  ],
+  "aggregated_metrics": [
+    {
+      "metric_id": "m-001",
+      "user_id": "a1b2c3d4-0001-4e5f-8a6b-7c8d9e0f1a2b",
+      "metric_name": "tasks_completed",
+      "period": "daily",
+      "data_points": [
+        {"date": "2026-02-01", "value": 4},
+        {"date": "2026-02-02", "value": 6},
+        {"date": "2026-02-03", "value": 3},
+        {"date": "2026-02-04", "value": 8},
+        {"date": "2026-02-05", "value": 5},
+        {"date": "2026-02-06", "value": 7},
+        {"date": "2026-02-07", "value": 9},
+        {"date": "2026-02-08", "value": 4},
+        {"date": "2026-02-09", "value": 6},
+        {"date": "2026-02-10", "value": 11},
+        {"date": "2026-02-11", "value": 8},
+        {"date": "2026-02-12", "value": 5},
+        {"date": "2026-02-13", "value": 7},
+        {"date": "2026-02-14", "value": 6},
+        {"date": "2026-02-15", "value": 9}
+      ]
+    },
+    {
+      "metric_id": "m-002",
+      "user_id": "a1b2c3d4-0001-4e5f-8a6b-7c8d9e0f1a2b",
+      "metric_name": "goal_completion_rate",
+      "period": "weekly",
+      "data_points": [
+        {"week_start": "2026-01-06", "value": 0.62},
+        {"week_start": "2026-01-13", "value": 0.71},
+        {"week_start": "2026-01-20", "value": 0.68},
+        {"week_start": "2026-01-27", "value": 0.75},
+        {"week_start": "2026-02-03", "value": 0.80},
+        {"week_start": "2026-02-10", "value": 0.78},
+        {"week_start": "2026-02-17", "value": 0.83},
+        {"week_start": "2026-02-24", "value": 0.85}
+      ]
+    },
+    {
+      "metric_id": "m-003",
+      "user_id": "a1b2c3d4-0001-4e5f-8a6b-7c8d9e0f1a2b",
+      "metric_name": "ai_insight_engagement",
+      "period": "daily",
+      "data_points": [
+        {"date": "2026-02-15", "value": 3, "metadata": {"type": "viewed"}},
+        {"date": "2026-02-16", "value": 2, "metadata": {"type": "acted_upon"}},
+        {"date": "2026-02-17", "value": 4, "metadata": {"type": "viewed"}},
+        {"date": "2026-02-18", "value": 1, "metadata": {"type": "dismissed"}},
+        {"date": "2026-02-19", "value": 5, "metadata": {"type": "viewed"}},
+        {"date": "2026-02-20", "value": 3, "metadata": {"type": "acted_upon"}}
+      ]
+    }
+  ],
+  "reports": [
+    {
+      "report_id": "rpt-001",
+      "user_id": "a1b2c3d4-0001-4e5f-8a6b-7c8d9e0f1a2b",
+      "report_type": "weekly_summary",
+      "title": "Week of February 24, 2026",
+      "generated_at": "2026-03-01T07:00:00Z",
+      "period": {
+        "start": "2026-02-24T00:00:00Z",
+        "end": "2026-03-02T23:59:59Z"
+      },
+      "summary": {
+        "tasks_completed": 32,
+        "tasks_created": 41,
+        "goals_updated": 5,
+        "ai_insights_received": 12,
+        "ai_insights_acted_upon": 8,
+        "streak_days": 14,
+        "top_categories": ["work", "health", "learning"]
+      },
+      "narrative": "This was an exceptional week. You maintained a 14-day streak and acted on 67% of your AI insights. Your 'Deep Work Blocks' goal hit 85% completion."
+    }
+  ]
+}
