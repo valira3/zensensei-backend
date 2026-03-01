@@ -1,5 +1,5 @@
 """
 ZenSensei Analytics Service
 
-User behavior tracking, metric aggregation, and pattern detection.
+User behavior tracking, pattern detection, aggregate statistics, and reporting.
 """
