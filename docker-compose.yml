@@ -1,65 +1,226 @@
-version: "3.9"
+version: '3.9'
+
+# ─────────────────────────────────────────────────────────────────────────────
+# ZenSensei — local development stack
+# Usage:
+#   docker compose up --build          # start everything
+#   docker compose up gateway          # start only gateway
+#   docker compose logs -f gateway     # tail logs
+# ─────────────────────────────────────────────────────────────────────────────
+
+x-common-env: &common-env
+  REDIS_URL: redis://redis:6379
+  JWT_SECRET: ${JWT_SECRET:-dev-secret-change-in-prod}
+  LOG_LEVEL: ${LOG_LEVEL:-info}
 
 services:
-  neo4j:
-    image: neo4j:5.14-enterprise
-    container_name: zensensei-neo4j
-    ports:
-      - "7474:7474"
-      - "7687:7687"
-    environment:
-      NEO4J_AUTH: neo4j/localdev
-      NEO4J_ACCEPT_LICENSE_AGREEMENT: "yes"
-      NEO4J_dbms_memory_heap_initial__size: 512m
-      NEO4J_dbms_memory_heap_max__size: 2G
-      NEO4J_dbms_memory_pagecache_size: 512m
-    volumes:
-      - neo4j_data:/data
-      - neo4j_logs:/logs
-    healthcheck:
-      test: ["CMD", "neo4j", "status"]
-      interval: 15s
-      timeout: 10s
-      retries: 5
-    networks:
-      - zensensei-net
 
+  # ── Infrastructure ──────────────────────────────────────────────────────────
   redis:
     image: redis:7-alpine
-    container_name: zensensei-redis
+    restart: unless-stopped
     ports:
       - "6379:6379"
-    volumes:
-      - redis_data:/data
-    command: redis-server --appendonly yes
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 10s
       timeout: 5s
       retries: 5
-    networks:
-      - zensensei-net
 
-  api-gateway:
+  # ── API Gateway ─────────────────────────────────────────────────────────────
+  gateway:
     build:
       context: .
-      dockerfile: services/api_gateway/Dockerfile
-    container_name: zensensei-api-gateway
-    ports:
-      - "${API_GATEWAY_PORT:-4000}:4000"
-    env_file:
-      - .env
-    environment:
-      PORT: 4000
+      dockerfile: gateway/Dockerfile
     restart: unless-stopped
-    networks:
-      - zensensei-net
+    ports:
+      - "8000:8000"
+    environment:
+      <<: *common-env
+      AUTH_SERVICE_URL: http://auth:8001
+      JOURNAL_SERVICE_URL: http://journal:8002
+      MOOD_SERVICE_URL: http://mood:8003
+      BREATHING_SERVICE_URL: http://breathing:8004
+      INSIGHTS_SERVICE_URL: http://insights:8005
+      NOTIFICATIONS_SERVICE_URL: http://notifications:8006
+      INTEGRATIONS_SERVICE_URL: http://integrations:8007
+    depends_on:
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
 
-volumes:
-  neo4j_data:
-  neo4j_logs:
-  redis_data:
+  # ── Auth Service ─────────────────────────────────────────────────────────────
+  auth:
+    build:
+      context: .
+      dockerfile: services/auth/Dockerfile
+    restart: unless-stopped
+    ports:
+      - "8001:8001"
+    environment:
+      <<: *common-env
+      DATABASE_URL: ${AUTH_DATABASE_URL}
+      SERVICE_PORT: 8001
+    depends_on:
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8001/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
 
-networks:
-  zensensei-net:
-    driver: bridge
+  # ── Journal Service ──────────────────────────────────────────────────────────
+  journal:
+    build:
+      context: .
+      dockerfile: services/journal/Dockerfile
+    restart: unless-stopped
+    ports:
+      - "8002:8002"
+    environment:
+      <<: *common-env
+      DATABASE_URL: ${JOURNAL_DATABASE_URL}
+      SERVICE_PORT: 8002
+    depends_on:
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8002/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+
+  # ── Mood Service ─────────────────────────────────────────────────────────────
+  mood:
+    build:
+      context: .
+      dockerfile: services/mood/Dockerfile
+    restart: unless-stopped
+    ports:
+      - "8003:8003"
+    environment:
+      <<: *common-env
+      DATABASE_URL: ${MOOD_DATABASE_URL}
+      SERVICE_PORT: 8003
+    depends_on:
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8003/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+
+  # ── Breathing Service ────────────────────────────────────────────────────────
+  breathing:
+    build:
+      context: .
+      dockerfile: services/breathing/Dockerfile
+    restart: unless-stopped
+    ports:
+      - "8004:8004"
+    environment:
+      <<: *common-env
+      SERVICE_PORT: 8004
+    depends_on:
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8004/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+
+  # ── Insights Service ─────────────────────────────────────────────────────────
+  insights:
+    build:
+      context: .
+      dockerfile: services/insights/Dockerfile
+    restart: unless-stopped
+    ports:
+      - "8005:8005"
+    environment:
+      <<: *common-env
+      DATABASE_URL: ${INSIGHTS_DATABASE_URL}
+      OPENAI_API_KEY: ${OPENAI_API_KEY}
+      SERVICE_PORT: 8005
+    depends_on:
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8005/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+
+  # ── Notifications Service ────────────────────────────────────────────────────
+  notifications:
+    build:
+      context: .
+      dockerfile: services/notifications/Dockerfile
+    restart: unless-stopped
+    ports:
+      - "8006:8006"
+    environment:
+      <<: *common-env
+      DATABASE_URL: ${NOTIFICATIONS_DATABASE_URL}
+      SERVICE_PORT: 8006
+    depends_on:
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8006/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+
+  # ── Integrations Service ─────────────────────────────────────────────────────
+  integrations:
+    build:
+      context: .
+      dockerfile: services/integrations/Dockerfile
+    restart: unless-stopped
+    ports:
+      - "8007:8007"
+    environment:
+      <<: *common-env
+      DATABASE_URL: ${INTEGRATIONS_DATABASE_URL}
+      SERVICE_PORT: 8007
+    depends_on:
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8007/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+
+  # ── Frontend ─────────────────────────────────────────────────────────────────
+  frontend:
+    build:
+      context: .
+      dockerfile: frontend/Dockerfile
+    restart: unless-stopped
+    ports:
+      - "3000:80"
+    depends_on:
+      - gateway
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:80/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s

@@ -1,93 +1,141 @@
 {
-  "$schema": "https://railway.com/railway.schema.json",
+  "$schema": "https://railway.app/railway.schema.json",
   "build": {
-    "builder": "DOCKERFILE"
+    "builder": "DOCKERFILE",
+    "dockerfilePath": "Dockerfile"
   },
   "deploy": {
+    "startCommand": "uvicorn main:app --host 0.0.0.0 --port $PORT",
+    "healthcheckPath": "/health",
+    "healthcheckTimeout": 30,
     "restartPolicyType": "ON_FAILURE",
     "restartPolicyMaxRetries": 3
   },
   "services": [
     {
       "name": "gateway",
+      "source": {
+        "repo": "valira3/zensensei-backend",
+        "branch": "main"
+      },
       "build": {
-        "builder": "DOCKERFILE",
         "dockerfilePath": "gateway/Dockerfile"
       },
       "deploy": {
-        "healthcheckPath": "/health",
-        "healthcheckTimeout": 300
+        "startCommand": "uvicorn main:app --host 0.0.0.0 --port $PORT",
+        "healthcheckPath": "/health"
       }
     },
     {
-      "name": "user-service",
+      "name": "auth",
+      "source": {
+        "repo": "valira3/zensensei-backend",
+        "branch": "main"
+      },
       "build": {
-        "builder": "DOCKERFILE",
-        "dockerfilePath": "services/user_service/Dockerfile"
+        "dockerfilePath": "services/auth/Dockerfile"
       },
       "deploy": {
-        "healthcheckPath": "/health",
-        "healthcheckTimeout": 300
+        "startCommand": "uvicorn main:app --host 0.0.0.0 --port $PORT",
+        "healthcheckPath": "/health"
       }
     },
     {
-      "name": "graph-query-service",
+      "name": "journal",
+      "source": {
+        "repo": "valira3/zensensei-backend",
+        "branch": "main"
+      },
       "build": {
-        "builder": "DOCKERFILE",
-        "dockerfilePath": "services/graph_query_service/Dockerfile"
+        "dockerfilePath": "services/journal/Dockerfile"
       },
       "deploy": {
-        "healthcheckPath": "/health",
-        "healthcheckTimeout": 300
+        "startCommand": "uvicorn main:app --host 0.0.0.0 --port $PORT",
+        "healthcheckPath": "/health"
       }
     },
     {
-      "name": "ai-reasoning-service",
+      "name": "mood",
+      "source": {
+        "repo": "valira3/zensensei-backend",
+        "branch": "main"
+      },
       "build": {
-        "builder": "DOCKERFILE",
-        "dockerfilePath": "services/ai_reasoning_service/Dockerfile"
+        "dockerfilePath": "services/mood/Dockerfile"
       },
       "deploy": {
-        "healthcheckPath": "/health",
-        "healthcheckTimeout": 300
+        "startCommand": "uvicorn main:app --host 0.0.0.0 --port $PORT",
+        "healthcheckPath": "/health"
       }
     },
     {
-      "name": "integration-service",
+      "name": "breathing",
+      "source": {
+        "repo": "valira3/zensensei-backend",
+        "branch": "main"
+      },
       "build": {
-        "builder": "DOCKERFILE",
-        "dockerfilePath": "services/integration_service/Dockerfile"
+        "dockerfilePath": "services/breathing/Dockerfile"
       },
       "deploy": {
-        "healthcheckPath": "/health",
-        "healthcheckTimeout": 300
+        "startCommand": "uvicorn main:app --host 0.0.0.0 --port $PORT",
+        "healthcheckPath": "/health"
       }
     },
     {
-      "name": "notification-service",
+      "name": "insights",
+      "source": {
+        "repo": "valira3/zensensei-backend",
+        "branch": "main"
+      },
       "build": {
-        "builder": "DOCKERFILE",
-        "dockerfilePath": "services/notification_service/Dockerfile"
+        "dockerfilePath": "services/insights/Dockerfile"
       },
       "deploy": {
-        "healthcheckPath": "/health",
-        "healthcheckTimeout": 300
+        "startCommand": "uvicorn main:app --host 0.0.0.0 --port $PORT",
+        "healthcheckPath": "/health"
       }
     },
     {
-      "name": "analytics-service",
+      "name": "notifications",
+      "source": {
+        "repo": "valira3/zensensei-backend",
+        "branch": "main"
+      },
       "build": {
-        "builder": "DOCKERFILE",
-        "dockerfilePath": "services/analytics_service/Dockerfile"
+        "dockerfilePath": "services/notifications/Dockerfile"
       },
       "deploy": {
-        "healthcheckPath": "/health",
-        "healthcheckTimeout": 300
+        "startCommand": "uvicorn main:app --host 0.0.0.0 --port $PORT",
+        "healthcheckPath": "/health"
       }
     },
     {
-      "name": "Redis",
-      "plugin": "redis"
+      "name": "integrations",
+      "source": {
+        "repo": "valira3/zensensei-backend",
+        "branch": "main"
+      },
+      "build": {
+        "dockerfilePath": "services/integrations/Dockerfile"
+      },
+      "deploy": {
+        "startCommand": "uvicorn main:app --host 0.0.0.0 --port $PORT",
+        "healthcheckPath": "/health"
+      }
+    },
+    {
+      "name": "frontend",
+      "source": {
+        "repo": "valira3/zensensei-backend",
+        "branch": "main"
+      },
+      "build": {
+        "dockerfilePath": "frontend/Dockerfile"
+      },
+      "deploy": {
+        "healthcheckPath": "/health"
+      }
     }
   ]
 }

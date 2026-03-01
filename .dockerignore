@@ -1,0 +1,23 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.venv/
+venv/
+*.egg-info/
+dist/
+build/
+
+# Dev/test
+.env
+.env.*
+*.test.*
+tests/
+.pytest_cache/
+
+# Docs / tooling
+docs/
+*.md
+.git/
+.github/
+.DS_Store

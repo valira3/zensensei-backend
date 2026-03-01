@@ -1,0 +1,13 @@
+[build]
+dockerfilePath = "frontend/Dockerfile"
+
+[deploy]
+healthcheckPath = "/health"
+healthcheckTimeout = 30
+restartPolicyType = "ON_FAILURE"
+restartPolicyMaxRetries = 3
+
+[env]
+# No extra env needed — nginx serves static files
+# If you need to inject an API URL at build time, add:
+# VITE_API_URL = "https://your-gateway.up.railway.app"
