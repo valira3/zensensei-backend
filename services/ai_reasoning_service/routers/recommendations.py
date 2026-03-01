@@ -31,7 +31,7 @@ logger = structlog.get_logger(__name__)
 
 router = APIRouter()
 
-# ─── Dependency injection ───────────────────────────────────────────────────────────────
+# ─── Dependency injection ─────────────────────────────────────────────────────
 
 _shared_llm = LLMClient()
 _shared_rec_engine = RecommendationEngine(llm_client=_shared_llm)
@@ -41,7 +41,7 @@ def get_rec_engine() -> RecommendationEngine:
     return _shared_rec_engine
 
 
-# ─── Routes ─────────────────────────────────────────────────────────────────────
+# ─── Routes ───────────────────────────────────────────────────────────────────
 
 
 @router.get(

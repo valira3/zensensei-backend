@@ -1,190 +1,356 @@
 """
 ZenSensei AI Reasoning Service - Schemas
 
-Pydantic request/response models for the AI Reasoning Service.
-All IDs are strings (UUIDs from Firestore/Neo4j).
+Pydantic request/response models for the AI Reasoning Service API.
+All models extend the shared BaseModel to get orjson serialisation,
+enum coercion, and consistent config.
 """
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, timezone
+from enum import StrEnum
 from typing import Any, Optional
 
-from pydantic import BaseModel, Field
+from pydantic import Field, field_validator
+
+from shared.models.base import BaseModel, TimestampMixin
+from shared.models.insights import InsightImpact, InsightType
 
 
-# ─── Shared sub-models ───────────────────────────────────────────────────────────────────
+# ─── Enums ────────────────────────────────────────────────────────────────────
 
 
-class EvidenceItem(BaseModel):
-    """A single piece of evidence supporting an insight or decision."""
-
-    source: str = Field(..., description="Data source (e.g. 'calendar', 'tasks', 'graph')")
-    description: str = Field(..., description="Human-readable description of the evidence")
-    weight: float = Field(default=1.0, ge=0.0, le=1.0, description="Evidence weight 0–1")
-    metadata: dict[str, Any] = Field(default_factory=dict)
+class FeedbackAction(StrEnum):
+    ACCEPTED = "accepted"
+    DISMISSED = "dismissed"
+    HELPFUL = "helpful"
+    NOT_HELPFUL = "not_helpful"
 
 
-class RecommendationItem(BaseModel):
-    """A single actionable recommendation."""
+class DecisionCategory(StrEnum):
+    CAREER = "CAREER"
+    FINANCIAL = "FINANCIAL"
+    RELATIONSHIP = "RELATIONSHIP"
+    HEALTH = "HEALTH"
+    PERSONAL_GROWTH = "PERSONAL_GROWTH"
+    OTHER = "OTHER"
 
-    rec_id: str = Field(..., description="Unique recommendation ID")
-    title: str = Field(..., description="Short title for the recommendation")
-    description: str = Field(..., description="Detailed description and rationale")
-    priority: str = Field(..., description="Priority: high / medium / low")
-    effort: str = Field(..., description="Effort: low / medium / high")
-    category: str = Field(..., description="Life area: career / health / finance / etc.")
-    action_url: Optional[str] = Field(default=None, description="Deep-link to act on the recommendation")
-    estimated_impact: Optional[str] = Field(default=None)
-    metadata: dict[str, Any] = Field(default_factory=dict)
+
+class RecommendationType(StrEnum):
+    GOAL = "GOAL"
+    RELATIONSHIP = "RELATIONSHIP"
+    WELLNESS = "WELLNESS"
+    HABIT = "HABIT"
+    TASK = "TASK"
+    FINANCIAL = "FINANCIAL"
+
+
+class RecommendationPriority(StrEnum):
+    LOW = "LOW"
+    MEDIUM = "MEDIUM"
+    HIGH = "HIGH"
+    URGENT = "URGENT"
+
+
+# ─── Insight Schemas ──────────────────────────────────────────────────────────
+
+
+class InsightGenerateRequest(BaseModel):
+    """Request body for triggering daily insight generation for a user."""
+
+    force_refresh: bool = Field(
+        default=False,
+        description="Bypass cache and regenerate insights even if fresh ones exist",
+    )
+    max_insights: int = Field(
+        default=5,
+        ge=1,
+        le=10,
+        description="Maximum number of insights to generate",
+    )
+    focus_areas: list[InsightType] = Field(
+        default_factory=list,
+        description="Optional list of insight types to prioritise",
+    )
 
 
 class InsightItem(BaseModel):
     """A single AI-generated insight."""
 
     insight_id: str
-    insight_type: str = Field(
-        ...,
-        description="Type: pattern / financial / wellness / skill_gap / relationship / goal_risk",
-    )
+    insight_type: InsightType
     title: str
-    summary: str
-    confidence: float = Field(..., ge=0.0, le=1.0)
-    severity: str = Field(..., description="Severity: info / suggestion / warning / critical")
-    evidence: list[EvidenceItem] = Field(default_factory=list)
-    recommendations: list[RecommendationItem] = Field(default_factory=list)
-    generated_at: datetime
-    expires_at: Optional[datetime] = None
+    description: str
+    action: str = Field(description="Suggested next action derived from this insight")
+    confidence: float = Field(ge=0.0, le=1.0, description="Model confidence 0–1")
+    impact: InsightImpact
+    related_node_ids: list[str] = Field(default_factory=list)
     metadata: dict[str, Any] = Field(default_factory=dict)
-
-
-class DecisionOption(BaseModel):
-    """One option within a decision analysis."""
-
-    option_id: str
-    label: str
-    pros: list[str] = Field(default_factory=list)
-    cons: list[str] = Field(default_factory=list)
-    estimated_outcome: Optional[str] = None
-    alignment_score: float = Field(default=0.5, ge=0.0, le=1.0, description="Alignment with user goals 0-1")
-    risk_level: str = Field(default="medium", description="low / medium / high")
-
-
-# ─── Insights ──────────────────────────────────────────────────────────────────────
-
-
-class GenerateInsightsRequest(BaseModel):
-    """Request body for generating insights."""
-
-    focus_areas: list[str] = Field(
-        default_factory=list,
-        description="Optional: focus on specific areas. Empty = all areas.",
-        examples=[["career", "health"]],
-    )
-    max_insights: int = Field(default=5, ge=1, le=20)
-    min_confidence: float = Field(default=0.6, ge=0.0, le=1.0)
-    include_low_confidence: bool = Field(
-        default=False,
-        description="If True, includes insights below min_confidence with a lower confidence flag.",
+    generated_at: datetime = Field(
+        default_factory=lambda: datetime.now(tz=timezone.utc)
     )
 
 
-class InsightResponse(BaseModel):
-    """Response wrapping a list of generated insights."""
+class InsightGenerateResponse(BaseModel):
+    """Response body after generating daily insights."""
 
     user_id: str
     insights: list[InsightItem]
-    total_count: int
-    generated_at: datetime
-    processing_time_ms: Optional[int] = None
+    generated_at: datetime = Field(
+        default_factory=lambda: datetime.now(tz=timezone.utc)
+    )
+    model_used: str
+    from_cache: bool = False
+    generation_duration_ms: Optional[float] = None
+
+
+class InsightListResponse(BaseModel):
+    """Paginated list of a user's recent insights."""
+
+    user_id: str
+    insights: list[InsightItem]
+    total: int
+    page: int = 1
+    page_size: int = 20
+
+
+class InsightDetailResponse(BaseModel):
+    """Full detail of a single insight including feedback history."""
+
+    insight: InsightItem
+    feedback_history: list[dict[str, Any]] = Field(default_factory=list)
+
+
+class DailySummaryResponse(BaseModel):
+    """High-level daily summary with prioritised action items."""
+
+    user_id: str
+    date: str = Field(description="ISO date string e.g. 2026-03-01")
+    top_priorities: list[InsightItem]
+    relationship_nudges: list[InsightItem]
+    risk_alerts: list[InsightItem]
+    pattern_observations: list[InsightItem]
+    total_insights: int
+    wellness_score: Optional[float] = Field(
+        default=None,
+        ge=0.0,
+        le=100.0,
+        description="Optional aggregate wellness score 0–100",
+    )
+    summary_text: str = Field(description="One-paragraph narrative summary for the day")
 
 
 class FeedbackRequest(BaseModel):
-    """Feedback on a specific insight."""
+    """Record user feedback on an insight."""
 
-    feedback: str = Field(
-        ...,
-        description="User feedback value: helpful / not_helpful / dismissed / acted_upon",
-        pattern="^(helpful|not_helpful|dismissed|acted_upon)$",
+    action: FeedbackAction
+    note: Optional[str] = Field(
+        default=None,
+        max_length=1000,
+        description="Optional free-text comment from the user",
     )
-    notes: Optional[str] = Field(default=None, max_length=500)
 
 
 class FeedbackResponse(BaseModel):
+    """Confirmation of recorded feedback."""
+
     insight_id: str
-    feedback_recorded: bool = True
-    message: str = "Feedback recorded. Thank you!"
-
-
-# ─── Decisions ──────────────────────────────────────────────────────────────────────
-
-
-class AnalyzeDecisionRequest(BaseModel):
-    """Request body for decision analysis."""
-
-    decision_title: str = Field(..., max_length=200, description="Brief title for the decision")
-    decision_description: str = Field(
-        ..., max_length=2000, description="Full context of the decision"
+    action: FeedbackAction
+    recorded_at: datetime = Field(
+        default_factory=lambda: datetime.now(tz=timezone.utc)
     )
-    options: list[str] = Field(
-        ...,
-        min_length=2,
-        max_length=5,
-        description="List of options to evaluate (2–5 options)",
-    )
-    context: Optional[str] = Field(
-        default=None,
-        max_length=1000,
-        description="Additional context (budget, constraints, timeline)",
-    )
-    priority_areas: list[str] = Field(
+
+
+# ─── Decision Schemas ─────────────────────────────────────────────────────────
+
+
+class DecisionOption(BaseModel):
+    """One option within a decision being analysed."""
+
+    label: str = Field(min_length=1, max_length=128)
+    description: Optional[str] = Field(default=None, max_length=1000)
+    estimated_cost: Optional[float] = Field(default=None, ge=0)
+    estimated_timeline_days: Optional[int] = Field(default=None, ge=0)
+    tags: list[str] = Field(default_factory=list)
+
+
+class DecisionContext(BaseModel):
+    """Full context for a decision to be analysed."""
+
+    title: str = Field(min_length=1, max_length=256)
+    description: str = Field(min_length=1, max_length=3000)
+    category: DecisionCategory = DecisionCategory.OTHER
+    options: list[DecisionOption] = Field(
         default_factory=list,
-        description="Life areas to prioritise in evaluation (career, health, finance, etc.)",
+        description="Explicit options being considered (optional for open analysis)",
     )
-    risk_tolerance: str = Field(
-        default="medium",
-        description="User's risk tolerance: low / medium / high",
-        pattern="^(low|medium|high)$",
+    constraints: list[str] = Field(
+        default_factory=list,
+        description="Constraints or requirements (e.g. 'must complete by June')",
+    )
+    related_goal_ids: list[str] = Field(
+        default_factory=list,
+        description="IDs of goals this decision affects",
+    )
+    user_id: str
+    urgency_days: Optional[int] = Field(
+        default=None,
+        ge=0,
+        description="How many days until a decision must be made",
     )
 
 
-class DecisionAnalysisResponse(BaseModel):
-    """Full decision analysis response."""
+class FactorAnalysis(BaseModel):
+    """Analysis of a single decision factor."""
+
+    factor: str
+    assessment: str
+    score: float = Field(ge=0.0, le=10.0, description="Factor score 0–10")
+    evidence: list[str] = Field(default_factory=list)
+    recommendation: str
+
+
+class DecisionAnalysis(BaseModel):
+    """Full multi-factor decision analysis result."""
 
     decision_id: str
     user_id: str
-    decision_title: str
-    summary: str = Field(..., description="One-paragraph executive summary")
-    options: list[DecisionOption]
+    title: str
+    summary: str = Field(description="One-paragraph executive summary")
     recommended_option: Optional[str] = Field(
-        default=None, description="option_id of recommended choice (None if tied)"
+        default=None,
+        description="Label of the recommended option if one clearly stands out",
     )
-    reasoning: str = Field(
-        ..., description="Detailed reasoning behind the recommendation"
+    confidence: float = Field(ge=0.0, le=1.0)
+
+    # Factor-level breakdowns
+    goal_impact: FactorAnalysis
+    relationship_effect: FactorAnalysis
+    financial_implications: FactorAnalysis
+    historical_patterns: FactorAnalysis
+    opportunity_cost: FactorAnalysis
+    risk_assessment: FactorAnalysis
+
+    overall_score: float = Field(
+        ge=0.0, le=10.0, description="Composite decision quality score 0–10"
     )
-    key_factors: list[str] = Field(default_factory=list, description="Top factors that drove the recommendation")
-    risks: list[str] = Field(default_factory=list, description="Key risks regardless of option chosen")
-    confidence: float = Field(..., ge=0.0, le=1.0)
-    generated_at: datetime
-    metadata: dict[str, Any] = Field(default_factory=dict)
+    action_steps: list[str] = Field(
+        default_factory=list, description="Recommended next steps"
+    )
+    risks: list[str] = Field(default_factory=list)
+    upsides: list[str] = Field(default_factory=list)
+    model_used: str
+    analyzed_at: datetime = Field(
+        default_factory=lambda: datetime.now(tz=timezone.utc)
+    )
 
 
-# ─── Recommendations ──────────────────────────────────────────────────────────────────
+class OptionComparison(BaseModel):
+    """Side-by-side comparison result for a single option."""
+
+    label: str
+    overall_score: float = Field(ge=0.0, le=10.0)
+    goal_alignment: float = Field(ge=0.0, le=10.0)
+    financial_score: float = Field(ge=0.0, le=10.0)
+    relationship_impact: float = Field(ge=0.0, le=10.0)
+    risk_score: float = Field(ge=0.0, le=10.0, description="Lower is riskier")
+    pros: list[str] = Field(default_factory=list)
+    cons: list[str] = Field(default_factory=list)
+    summary: str
+
+
+class DecisionCompareRequest(BaseModel):
+    """Request to compare multiple options side by side."""
+
+    user_id: str
+    context_description: str = Field(min_length=1, max_length=2000)
+    options: list[DecisionOption] = Field(min_length=2)
+    related_goal_ids: list[str] = Field(default_factory=list)
+
+
+class DecisionCompareResponse(BaseModel):
+    """Side-by-side comparison of multiple decision options."""
+
+    user_id: str
+    context_description: str
+    options: list[OptionComparison]
+    recommended: str = Field(description="Label of the top-ranked option")
+    reasoning: str = Field(description="Brief reasoning for the recommendation")
+    compared_at: datetime = Field(
+        default_factory=lambda: datetime.now(tz=timezone.utc)
+    )
+
+
+class DecisionHistoryItem(BaseModel):
+    """Summary of a past decision analysis."""
+
+    decision_id: str
+    title: str
+    category: DecisionCategory
+    recommended_option: Optional[str]
+    overall_score: float
+    analyzed_at: datetime
+
+
+class DecisionHistoryResponse(BaseModel):
+    """Paginated history of past decision analyses."""
+
+    user_id: str
+    analyses: list[DecisionHistoryItem]
+    total: int
+
+
+# ─── Recommendation Schemas ───────────────────────────────────────────────────
+
+
+class RecommendationItem(BaseModel):
+    """A single personalised recommendation."""
+
+    rec_id: str
+    rec_type: RecommendationType
+    title: str
+    description: str
+    rationale: str = Field(description="Why this recommendation is surfaced now")
+    priority: RecommendationPriority
+    effort: str = Field(
+        description="Estimated effort level: low / medium / high"
+    )
+    estimated_impact: InsightImpact
+    action_url: Optional[str] = Field(
+        default=None, description="Deep-link into the app for quick action"
+    )
+    related_entity_id: Optional[str] = Field(
+        default=None, description="ID of the goal, relationship, or habit this relates to"
+    )
+    acted_at: Optional[datetime] = None
 
 
 class RecommendationResponse(BaseModel):
+    """List of personalised recommendations for a user."""
+
     user_id: str
     recommendations: list[RecommendationItem]
     focus_area: str
-    total_count: int
-    generated_at: datetime
+    generated_at: datetime = Field(
+        default_factory=lambda: datetime.now(tz=timezone.utc)
+    )
 
 
 class ActOnRecommendationRequest(BaseModel):
-    notes: Optional[str] = Field(default=None, max_length=500)
+    """Request body to mark a recommendation as acted upon."""
+
+    notes: Optional[str] = Field(
+        default=None,
+        max_length=500,
+        description="Optional notes about the action taken",
+    )
 
 
 class ActOnRecommendationResponse(BaseModel):
+    """Confirmation that a recommendation was acted upon."""
+
     rec_id: str
-    acted: bool = True
-    message: str = "Recommendation marked as acted upon."
+    acted_at: datetime = Field(
+        default_factory=lambda: datetime.now(tz=timezone.utc)
+    )
