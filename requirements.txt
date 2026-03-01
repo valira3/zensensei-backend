@@ -1,0 +1,24 @@
+# ZenSensei Backend - Production Requirements
+# Generated from pyproject.toml
+
+fastapi>=0.104.0
+uvicorn[standard]>=0.24.0
+pydantic>=2.5.0
+pydantic-settings>=2.1.0
+python-jose[cryptography]>=3.3.0
+passlib[bcrypt]>=1.7.4
+python-multipart>=0.0.6
+neo4j>=5.14.0
+redis>=5.0.0
+google-cloud-firestore>=2.13.0
+google-cloud-bigquery>=3.13.0
+google-cloud-pubsub>=2.18.0
+google-cloud-storage>=2.13.0
+google-cloud-secret-manager>=2.16.0
+google-cloud-aiplatform>=1.36.0
+firebase-admin>=6.2.0
+httpx>=0.25.0
+aiohttp>=3.9.0
+structlog>=23.2.0
+orjson>=3.9.0
+tenacity>=8.2.0
