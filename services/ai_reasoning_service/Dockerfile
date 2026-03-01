@@ -1,9 +1,5 @@
-# ─────────────────────────────────────────────────────────────────────────────
-# ZenSensei AI Reasoning Service - Dockerfile
-# ─────────────────────────────────────────────────────────────────────────────
-# Multi-stage build:
-#   builder  - installs Python dependencies into a virtual-env
-#   runtime  - copies only the venv + application code for a slim final image
+# ZenSensei AI Reasoning Service -- Dockerfile
+# Multi-stage build
 
 FROM python:3.11-slim AS builder
 
@@ -12,6 +8,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /build
+
 RUN python -m venv /build/venv
 ENV PATH="/build/venv/bin:$PATH"
 
@@ -39,6 +36,7 @@ ENV ENVIRONMENT=production \
     PORT=8003
 
 EXPOSE 8003
+
 USER zensensei
 
 HEALTHCHECK --interval=30s --timeout=10s --start-period=15s --retries=3 \
