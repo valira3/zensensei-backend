@@ -1,78 +1,108 @@
 """
 ZenSensei API Gateway - Health Check Aggregator
 
-Polls all downstream services and returns an aggregated health report.
+Polls all six downstream services in parallel and returns a unified
+health payload indicating which services are healthy or degraded.
 """
 
 from __future__ import annotations
 
 import asyncio
+import logging
 import time
 from typing import Any
 
 import httpx
-from fastapi import APIRouter
-from fastapi.responses import JSONResponse
 
-from shared.config import settings
+from gateway.routes import ROUTES, ServiceRoute
 
-router = APIRouter()
+logger = logging.getLogger("gateway.health")
 
-# Map of service name → base URL
-_SERVICES: dict[str, str] = {
-    "user-service": settings.USER_SERVICE_URL,
-    "graph-query-service": settings.GRAPH_QUERY_SERVICE_URL,
-    "ai-reasoning-service": settings.AI_REASONING_SERVICE_URL,
-    "integration-service": settings.INTEGRATION_SERVICE_URL,
-    "notification-service": settings.NOTIFICATION_SERVICE_URL,
-    "analytics-service": settings.ANALYTICS_SERVICE_URL,
-}
+_PROBE_TIMEOUT = 5.0  # seconds
 
 
-async def _check_service(name: str, base_url: str, client: httpx.AsyncClient) -> dict[str, Any]:
-    """Probe a single service's /health endpoint."""
-    url = f"{base_url.rstrip('/')}/health"
+async def _probe_service(
+    client: httpx.AsyncClient,
+    route: ServiceRoute,
+) -> dict[str, Any]:
+    """Probe a single upstream service health endpoint."""
+    url = route.base_url.rstrip("/") + route.health_path
     start = time.monotonic()
     try:
-        resp = await client.get(url, timeout=5.0)
+        resp = await client.get(url, timeout=_PROBE_TIMEOUT)
         latency_ms = round((time.monotonic() - start) * 1000, 1)
         if resp.status_code == 200:
-            return {"status": "healthy", "latency_ms": latency_ms}
-        return {"status": "degraded", "http_status": resp.status_code, "latency_ms": latency_ms}
-    except Exception as exc:  # noqa: BLE001
+            try:
+                payload = resp.json()
+            except Exception:
+                payload = {}
+            return {
+                "name": route.name,
+                "status": "healthy",
+                "latency_ms": latency_ms,
+                "url": url,
+                "upstream_status": payload.get("status", "ok"),
+            }
+        else:
+            return {
+                "name": route.name,
+                "status": "degraded",
+                "latency_ms": latency_ms,
+                "url": url,
+                "http_status": resp.status_code,
+                "detail": f"Upstream returned HTTP {resp.status_code}",
+            }
+    except httpx.ConnectError:
         latency_ms = round((time.monotonic() - start) * 1000, 1)
-        return {"status": "unreachable", "error": str(exc), "latency_ms": latency_ms}
+        return {
+            "name": route.name,
+            "status": "unhealthy",
+            "latency_ms": latency_ms,
+            "url": url,
+            "detail": "Connection refused",
+        }
+    except httpx.TimeoutException:
+        latency_ms = round((time.monotonic() - start) * 1000, 1)
+        return {
+            "name": route.name,
+            "status": "unhealthy",
+            "latency_ms": latency_ms,
+            "url": url,
+            "detail": "Health probe timed out",
+        }
+    except Exception as exc:
+        latency_ms = round((time.monotonic() - start) * 1000, 1)
+        logger.error("Health probe failed for %s: %s", route.name, exc)
+        return {
+            "name": route.name,
+            "status": "unhealthy",
+            "latency_ms": latency_ms,
+            "url": url,
+            "detail": str(exc),
+        }
 
 
-@router.get("/health")
-async def gateway_health() -> JSONResponse:
-    """Liveness probe — returns 200 immediately without hitting downstream services."""
-    return JSONResponse(
-        status_code=200,
-        content={"status": "healthy", "service": "api-gateway"},
-    )
+async def check_all_services() -> dict[str, Any]:
+    """Probe all registered services concurrently."""
+    async with httpx.AsyncClient(follow_redirects=True) as client:
+        tasks = [_probe_service(client, route) for route in ROUTES]
+        results: list[dict[str, Any]] = await asyncio.gather(*tasks)
 
+    services: dict[str, Any] = {r["name"]: r for r in results}
 
-@router.get("/ready")
-async def gateway_ready() -> JSONResponse:
-    """Readiness probe — polls all downstream services in parallel."""
-    async with httpx.AsyncClient() as client:
-        tasks = [
-            _check_service(name, url, client)
-            for name, url in _SERVICES.items()
-        ]
-        results_list = await asyncio.gather(*tasks)
+    statuses = [r["status"] for r in results]
+    if all(s == "healthy" for s in statuses):
+        overall = "healthy"
+    elif all(s == "unhealthy" for s in statuses):
+        overall = "unhealthy"
+    else:
+        overall = "degraded"
 
-    services: dict[str, Any] = dict(zip(_SERVICES.keys(), results_list))
-    all_healthy = all(s["status"] == "healthy" for s in services.values())
-    overall = "ready" if all_healthy else "degraded"
-    status_code = 200 if all_healthy else 503
-
-    return JSONResponse(
-        status_code=status_code,
-        content={
-            "status": overall,
-            "service": "api-gateway",
-            "services": services,
-        },
-    )
+    return {
+        "status": overall,
+        "services": services,
+        "total": len(results),
+        "healthy": statuses.count("healthy"),
+        "degraded": statuses.count("degraded"),
+        "unhealthy": statuses.count("unhealthy"),
+    }

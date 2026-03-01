@@ -1,8 +1,9 @@
 """
 ZenSensei API Gateway
 
-Unified entry point that proxies all client requests to the appropriate
-backend microservice.
+Unified entry point that proxies all requests to the appropriate
+downstream microservice with JWT validation, rate limiting, CORS,
+and request logging.
 """
 
 __version__ = "1.0.0"
