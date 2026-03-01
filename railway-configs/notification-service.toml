@@ -1,0 +1,18 @@
+# Railway service config - Notification Service
+# Root Directory: . (repo root)
+# Dockerfile: services/notification_service/Dockerfile
+
+[build]
+builder = "DOCKERFILE"
+dockerfilePath = "services/notification_service/Dockerfile"
+
+[deploy]
+healthcheckPath = "/health"
+healthcheckTimeout = 300
+restartPolicyType = "ON_FAILURE"
+restartPolicyMaxRetries = 3
+
+# Environment variables required:
+# PORT, ENVIRONMENT, SECRET_KEY, SMTP_HOST, SMTP_PORT, SMTP_USER
+# SMTP_PASSWORD, EMAIL_FROM, FCM_PROJECT_ID, REDIS_URL
+# PUBSUB_PROJECT_ID, PUBSUB_SUBSCRIPTION, WEB_CONCURRENCY

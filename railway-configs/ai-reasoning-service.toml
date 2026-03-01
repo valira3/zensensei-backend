@@ -1,0 +1,18 @@
+# Railway service config - AI Reasoning Service
+# Root Directory: . (repo root)
+# Dockerfile: services/ai_reasoning_service/Dockerfile
+
+[build]
+builder = "DOCKERFILE"
+dockerfilePath = "services/ai_reasoning_service/Dockerfile"
+
+[deploy]
+healthcheckPath = "/health"
+healthcheckTimeout = 300
+restartPolicyType = "ON_FAILURE"
+restartPolicyMaxRetries = 3
+
+# Environment variables required:
+# PORT, ENVIRONMENT, SECRET_KEY, GEMINI_API_KEY, GEMINI_MODEL
+# ANTHROPIC_API_KEY, GCP_PROJECT_ID, REDIS_URL, REDIS_HOST
+# REDIS_PORT, REDIS_PASSWORD, AI_RATE_LIMIT_RPM, WEB_CONCURRENCY

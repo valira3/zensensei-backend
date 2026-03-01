@@ -1,0 +1,18 @@
+# Railway service config - Analytics Service
+# Root Directory: . (repo root)
+# Dockerfile: services/analytics_service/Dockerfile
+
+[build]
+builder = "DOCKERFILE"
+dockerfilePath = "services/analytics_service/Dockerfile"
+
+[deploy]
+healthcheckPath = "/health"
+healthcheckTimeout = 300
+restartPolicyType = "ON_FAILURE"
+restartPolicyMaxRetries = 3
+
+# Environment variables required:
+# PORT, ENVIRONMENT, SECRET_KEY, BIGQUERY_PROJECT_ID
+# BIGQUERY_DATASET, GCP_PROJECT_ID, REDIS_URL, PUBSUB_PROJECT_ID
+# PUBSUB_SUBSCRIPTION, WEB_CONCURRENCY

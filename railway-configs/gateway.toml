@@ -1,0 +1,19 @@
+# Railway service config - API Gateway
+# Root Directory: . (repo root)
+# Dockerfile: gateway/Dockerfile
+
+[build]
+builder = "DOCKERFILE"
+dockerfilePath = "gateway/Dockerfile"
+
+[deploy]
+healthcheckPath = "/health"
+healthcheckTimeout = 300
+restartPolicyType = "ON_FAILURE"
+restartPolicyMaxRetries = 3
+
+# Environment variables required:
+# PORT, ENVIRONMENT, SECRET_KEY, JWT_ALGORITHM, JWT_EXPIRY_MINUTES
+# USER_SERVICE_URL, GRAPH_QUERY_SERVICE_URL, AI_REASONING_SERVICE_URL
+# INTEGRATION_SERVICE_URL, NOTIFICATION_SERVICE_URL, ANALYTICS_SERVICE_URL
+# ALLOWED_ORIGINS, RATE_LIMIT_REQUESTS, RATE_LIMIT_WINDOW_SECONDS
