@@ -1,0 +1,19 @@
+# ZenSensei User Service - Requirements
+# This file is used by the Dockerfile builder stage.
+# It mirrors the root requirements.txt but can be pinned independently.
+
+fastapi>=0.104.0
+uvicorn[standard]>=0.24.0
+pydantic>=2.5.0
+pydantic-settings>=2.1.0
+python-jose[cryptography]>=3.3.0
+passlib[bcrypt]>=1.7.4
+python-multipart>=0.0.6
+neo4j>=5.14.0
+redis>=5.0.0
+google-cloud-firestore>=2.13.0
+httpx>=0.25.0
+structlog>=23.2.0
+orjson>=3.9.0
+tenacity>=8.2.0
+sendgrid>=6.11.0
