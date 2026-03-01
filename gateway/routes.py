@@ -2,13 +2,11 @@
 ZenSensei API Gateway - Route Definitions
 
 Maps URL path prefixes to upstream microservice base URLs.
-Each route entry carries the target service URL, a human-readable
-service name, and whether the path requires JWT authentication.
 """
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Optional
 import os
 
