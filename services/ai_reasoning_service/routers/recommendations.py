@@ -5,127 +5,136 @@ Endpoints
 ---------
 GET  /recommendations/{user_id}               Personalised action recommendations
 GET  /recommendations/{user_id}/goals         Goal-specific recommendations
-GET  /recommendations/{user_id}/relationships Relationship nurture suggestions
-GET  /recommendations/{user_id}/wellness      Wellness recommendations
-POST /recommendations/{rec_id}/act            Mark recommendation as acted upon
+GET  /recommendations/{user_id}/relationships Relationship nudges
+POST /recommendations/{user_id}/feedback      Submit recommendation feedback
 """
 
 from __future__ import annotations
 
+import logging
 from typing import Annotated, Optional
 
-import structlog
-from fastapi import APIRouter, Depends, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi.responses import ORJSONResponse
+
+from shared.auth import get_current_user
+from shared.models.base import BaseResponse
 
 from services.ai_reasoning_service.schemas import (
-    ActOnRecommendationRequest,
-    ActOnRecommendationResponse,
-    RecommendationResponse,
+    RecommendationFeedbackRequest,
+    RecommendationListResponse,
 )
-from services.ai_reasoning_service.services.llm_client import LLMClient
-from services.ai_reasoning_service.services.recommendation_engine import (
-    RecommendationEngine,
+from services.ai_reasoning_service.services.reasoning_service import (
+    ReasoningService,
+    get_reasoning_service,
 )
 
-logger = structlog.get_logger(__name__)
+logger = logging.getLogger(__name__)
 
-router = APIRouter()
-
-# ─── Dependency injection ─────────────────────────────────────────────────────
-
-_shared_llm = LLMClient()
-_shared_rec_engine = RecommendationEngine(llm_client=_shared_llm)
+router = APIRouter(prefix="/recommendations", tags=["recommendations"])
 
 
-def get_rec_engine() -> RecommendationEngine:
-    return _shared_rec_engine
+# ─── Dependency helpers ───────────────────────────────────────────────────────
 
 
-# ─── Routes ───────────────────────────────────────────────────────────────────
+def _svc() -> ReasoningService:
+    return get_reasoning_service()
+
+
+CurrentUser = Annotated[dict, Depends(get_current_user)]
+Svc = Annotated[ReasoningService, Depends(_svc)]
+
+
+# ─── Ownership guard ───────────────────────────────────────────────────────────
+
+
+def _assert_owns(current_user: dict, user_id: str) -> None:
+    """Raise 403 if the authenticated user is not the resource owner."""
+    if current_user["uid"] != user_id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Access denied",
+        )
+
+
+# ─── Routes ─────────────────────────────────────────────────────────────────
 
 
 @router.get(
     "/{user_id}",
-    response_model=RecommendationResponse,
-    summary="Get personalised action recommendations",
-    description=(
-        "Returns a prioritised list of personalised recommendations across all "
-        "life areas (goals, relationships, wellness, habits, finances) based on "
-        "the user's knowledge graph and historical patterns."
-    ),
+    response_class=ORJSONResponse,
+    status_code=status.HTTP_200_OK,
 )
 async def get_recommendations(
     user_id: str,
-    count: Annotated[int, Query(ge=1, le=20, description="Number of recommendations")] = 5,
-    engine: RecommendationEngine = Depends(get_rec_engine),
-) -> RecommendationResponse:
-    return await engine.generate_recommendations(
-        user_id=user_id, focus_area="ALL", count=count
+    current_user: CurrentUser,
+    svc: Svc,
+    limit: Optional[int] = Query(10, ge=1, le=50),
+    category: Optional[str] = Query(None),
+) -> ORJSONResponse:
+    """Return personalised recommendations. Only accessible by the target user."""
+    _assert_owns(current_user, user_id)
+    result: RecommendationListResponse = await svc.get_recommendations(
+        user_id=user_id,
+        limit=limit or 10,
+        category=category,
     )
+    return ORJSONResponse(BaseResponse(data=result.model_dump()).model_dump())
 
 
 @router.get(
     "/{user_id}/goals",
-    response_model=RecommendationResponse,
-    summary="Goal-specific recommendations",
-    description=(
-        "Returns recommendations focused on goal progress, blockers, "
-        "upcoming deadlines, and stalled objectives."
-    ),
+    response_class=ORJSONResponse,
+    status_code=status.HTTP_200_OK,
 )
 async def get_goal_recommendations(
     user_id: str,
-    engine: RecommendationEngine = Depends(get_rec_engine),
-) -> RecommendationResponse:
-    return await engine.goal_recommendations(user_id=user_id)
+    current_user: CurrentUser,
+    svc: Svc,
+    goal_id: Optional[str] = Query(None),
+) -> ORJSONResponse:
+    """Return goal-specific recommendations. Only accessible by the target user."""
+    _assert_owns(current_user, user_id)
+    result: RecommendationListResponse = await svc.get_goal_recommendations(
+        user_id=user_id,
+        goal_id=goal_id,
+    )
+    return ORJSONResponse(BaseResponse(data=result.model_dump()).model_dump())
 
 
 @router.get(
     "/{user_id}/relationships",
-    response_model=RecommendationResponse,
-    summary="Relationship nurture suggestions",
-    description=(
-        "Returns suggestions for who to reach out to and why, "
-        "sorted by days since last meaningful interaction."
-    ),
+    response_class=ORJSONResponse,
+    status_code=status.HTTP_200_OK,
 )
 async def get_relationship_recommendations(
     user_id: str,
-    engine: RecommendationEngine = Depends(get_rec_engine),
-) -> RecommendationResponse:
-    return await engine.relationship_recommendations(user_id=user_id)
-
-
-@router.get(
-    "/{user_id}/wellness",
-    response_model=RecommendationResponse,
-    summary="Wellness recommendations",
-    description=(
-        "Returns health and balance recommendations based on habit tracking, "
-        "behavioural patterns, and identified energy-dip periods."
-    ),
-)
-async def get_wellness_recommendations(
-    user_id: str,
-    engine: RecommendationEngine = Depends(get_rec_engine),
-) -> RecommendationResponse:
-    return await engine.wellness_recommendations(user_id=user_id)
+    current_user: CurrentUser,
+    svc: Svc,
+) -> ORJSONResponse:
+    """Return relationship nudges. Only accessible by the target user."""
+    _assert_owns(current_user, user_id)
+    result: RecommendationListResponse = await svc.get_relationship_recommendations(
+        user_id=user_id,
+    )
+    return ORJSONResponse(BaseResponse(data=result.model_dump()).model_dump())
 
 
 @router.post(
-    "/{rec_id}/act",
-    response_model=ActOnRecommendationResponse,
-    status_code=status.HTTP_201_CREATED,
-    summary="Mark recommendation as acted upon",
-    description=(
-        "Records that the user has acted on a specific recommendation. "
-        "Updates the recommendation's status to acted and timestamps the action."
-    ),
+    "/{user_id}/feedback",
+    response_class=ORJSONResponse,
+    status_code=status.HTTP_200_OK,
 )
-async def act_on_recommendation(
-    rec_id: str,
-    request: ActOnRecommendationRequest,
-    engine: RecommendationEngine = Depends(get_rec_engine),
-) -> ActOnRecommendationResponse:
-    await engine.mark_acted(rec_id=rec_id, notes=request.notes)
-    return ActOnRecommendationResponse(rec_id=rec_id)
+async def submit_feedback(
+    user_id: str,
+    payload: RecommendationFeedbackRequest,
+    current_user: CurrentUser,
+    svc: Svc,
+) -> ORJSONResponse:
+    """Submit feedback on a recommendation. Only accessible by the target user."""
+    _assert_owns(current_user, user_id)
+    await svc.submit_recommendation_feedback(
+        user_id=user_id,
+        payload=payload,
+    )
+    return ORJSONResponse(BaseResponse(data={"accepted": True}).model_dump())

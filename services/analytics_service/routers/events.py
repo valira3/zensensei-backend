@@ -10,130 +10,98 @@ GET  /analytics/events/{user_id}     Get paginated event history for a user
 
 from __future__ import annotations
 
+import logging
 from typing import Annotated, Optional
 
-import structlog
-from fastapi import APIRouter, Depends, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi.responses import ORJSONResponse
+
+from shared.auth import get_current_user
+from shared.models.base import BaseResponse
 
 from services.analytics_service.schemas import (
-    EventBatchRequest,
-    EventBatchResponse,
+    BatchEventRequest,
+    EventRequest,
     EventHistoryResponse,
-    EventResponse,
-    EventTrackRequest,
-    EventType,
 )
-from services.analytics_service.services.event_tracker import (
-    EventTracker,
-    get_event_tracker,
+from services.analytics_service.services.analytics_service import (
+    AnalyticsService,
+    get_analytics_service,
 )
 
-logger = structlog.get_logger(__name__)
+logger = logging.getLogger(__name__)
 
-router = APIRouter()
+router = APIRouter(prefix="/analytics/events", tags=["events"])
 
 
-@router.post(
-    "",
-    response_model=EventResponse,
-    status_code=status.HTTP_201_CREATED,
-    summary="Track an event",
-    description=(
-        "Ingest a single analytics event for a user. "
-        "Supported event types: page_view, feature_use, goal_create, goal_complete, "
-        "task_create, task_complete, insight_view, insight_act, "
-        "integration_connect, session_start, session_end."
-    ),
-)
+# ─── Dependency helpers ───────────────────────────────────────────────────────
+
+
+def _svc() -> AnalyticsService:
+    return get_analytics_service()
+
+
+CurrentUser = Annotated[dict, Depends(get_current_user)]
+Svc = Annotated[AnalyticsService, Depends(_svc)]
+
+
+# ─── Routes ─────────────────────────────────────────────────────────────────
+
+
+@router.post("", response_class=ORJSONResponse, status_code=status.HTTP_202_ACCEPTED)
 async def track_event(
-    request: EventTrackRequest,
-    tracker: EventTracker = Depends(get_event_tracker),
-) -> EventResponse:
-    record = await tracker.track_event(
-        user_id=request.user_id,
-        event_type=request.event_type,
-        properties=request.properties,
-        session_id=request.session_id,
-        timestamp=request.timestamp,
+    payload: EventRequest,
+    current_user: CurrentUser,
+    svc: Svc,
+) -> ORJSONResponse:
+    """Track a single analytics event for the authenticated user."""
+    await svc.track_event(
+        user_id=current_user["uid"],
+        event=payload,
     )
-
-    logger.info(
-        "event_ingested",
-        event_id=record.event_id,
-        user_id=record.user_id,
-        event_type=record.event_type,
-    )
-
-    return EventResponse(
-        event_id=record.event_id,
-        status="accepted",
-        ingested_at=record.ingested_at,
+    return ORJSONResponse(
+        BaseResponse(data={"queued": True}).model_dump(),
+        status_code=status.HTTP_202_ACCEPTED,
     )
 
 
-@router.post(
-    "/batch",
-    response_model=EventBatchResponse,
-    status_code=status.HTTP_201_CREATED,
-    summary="Batch event ingestion",
-    description=(
-        "Ingest up to 500 analytics events in a single request. "
-        "Returns the count of accepted and failed events along with the "
-        "generated event IDs for accepted records."
-    ),
-)
+@router.post("/batch", response_class=ORJSONResponse, status_code=status.HTTP_202_ACCEPTED)
 async def batch_track_events(
-    request: EventBatchRequest,
-    tracker: EventTracker = Depends(get_event_tracker),
-) -> EventBatchResponse:
-    accepted, failed, event_ids = await tracker.batch_track(request.events)
-
-    logger.info(
-        "batch_events_ingested",
-        accepted=accepted,
-        failed=failed,
-        total=len(request.events),
+    payload: BatchEventRequest,
+    current_user: CurrentUser,
+    svc: Svc,
+) -> ORJSONResponse:
+    """Batch-ingest analytics events (max 500). Scoped to the authenticated user."""
+    await svc.batch_track_events(
+        user_id=current_user["uid"],
+        events=payload,
     )
-
-    from datetime import datetime, timezone
-
-    return EventBatchResponse(
-        accepted=accepted,
-        failed=failed,
-        event_ids=event_ids,
-        ingested_at=datetime.now(tz=timezone.utc),
+    return ORJSONResponse(
+        BaseResponse(data={"queued": True, "count": len(payload.events)}).model_dump(),
+        status_code=status.HTTP_202_ACCEPTED,
     )
 
 
 @router.get(
     "/{user_id}",
-    response_model=EventHistoryResponse,
-    summary="Get user's event history",
-    description=(
-        "Retrieve paginated event history for a specific user. "
-        "Optionally filter by event type. Returns newest events first."
-    ),
+    response_class=ORJSONResponse,
+    status_code=status.HTTP_200_OK,
 )
-async def get_user_events(
+async def get_event_history(
     user_id: str,
-    page: Annotated[int, Query(ge=1, description="Page number (1-based)")] = 1,
-    page_size: Annotated[int, Query(ge=1, le=200, description="Events per page")] = 50,
-    event_type: Optional[EventType] = Query(
-        default=None, description="Filter by event type"
-    ),
-    tracker: EventTracker = Depends(get_event_tracker),
-) -> EventHistoryResponse:
-    events, total = await tracker.get_events(
+    current_user: CurrentUser,
+    svc: Svc,
+    limit: Optional[int] = Query(50, ge=1, le=500),
+    offset: Optional[int] = Query(0, ge=0),
+    event_type: Optional[str] = Query(None),
+) -> ORJSONResponse:
+    """Return paginated event history. Users can only access their own events."""
+    if current_user["uid"] != user_id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
+    result: EventHistoryResponse = await svc.get_event_history(
         user_id=user_id,
-        page=page,
-        page_size=page_size,
-        event_type_filter=event_type,
+        limit=limit or 50,
+        offset=offset or 0,
+        event_type=event_type,
     )
-
-    return EventHistoryResponse(
-        user_id=user_id,
-        events=events,
-        total=total,
-        page=page,
-        page_size=page_size,
-    )
+    return ORJSONResponse(BaseResponse(data=result.model_dump()).model_dump())

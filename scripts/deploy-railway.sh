@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
+# =============================================================================
 # ZenSensei Railway Deployment Helper
+# =============================================================================
 # Usage: ./scripts/deploy-railway.sh <command> [options]
 #
 # Commands:
@@ -9,8 +11,26 @@
 #   logs    -- Stream logs from a specific service (-s <service-name>)
 #   env     -- Set environment variables for a service from a .env file
 #   open    -- Open the Railway dashboard in your browser
+#
+# Requirements:
+#   - Railway CLI installed: https://docs.railway.app/develop/cli
+#   - Authenticated: run `railway login` first
+#   - jq installed (for JSON parsing in status command)
+#
+# Examples:
+#   ./scripts/deploy-railway.sh setup
+#   ./scripts/deploy-railway.sh deploy
+#   ./scripts/deploy-railway.sh deploy --service gateway
+#   ./scripts/deploy-railway.sh status
+#   ./scripts/deploy-railway.sh logs --service user-service
+#   ./scripts/deploy-railway.sh env --service gateway --file .env.production
+# =============================================================================
 
 set -euo pipefail
+
+# ---------------------------------------------------------------------------
+# Configuration
+# ---------------------------------------------------------------------------
 
 PROJECT_NAME="zensensei-backend"
 
@@ -24,8 +44,9 @@ SERVICES=(
   "analytics-service"
 )
 
+# Dockerfile paths relative to repo root (build context is always repo root)
 declare -A DOCKERFILE_PATHS=(
-  ["gateway"]="gateway/Dockerfile"
+  ["gateway"]="Dockerfile"
   ["user-service"]="services/user_service/Dockerfile"
   ["graph-query-service"]="services/graph_query_service/Dockerfile"
   ["ai-reasoning-service"]="services/ai_reasoning_service/Dockerfile"
@@ -34,135 +55,143 @@ declare -A DOCKERFILE_PATHS=(
   ["analytics-service"]="services/analytics_service/Dockerfile"
 )
 
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-BLUE='\033[0;34m'
-BOLD='\033[1m'
-NC='\033[0m'
+# ---------------------------------------------------------------------------
+# Helpers
+# ---------------------------------------------------------------------------
 
-log()    { echo -e "${BLUE}[zensensei]${NC} $*"; }
-ok()     { echo -e "${GREEN}[ok]${NC} $*"; }
-warn()   { echo -e "${YELLOW}[warn]${NC} $*"; }
-err()    { echo -e "${RED}[error]${NC} $*" >&2; }
-header() { echo -e "\n${BOLD}${BLUE}=== $* ===${NC}"; }
+log()  { echo "[deploy] $*"; }
+die()  { echo "[ERROR] $*" >&2; exit 1; }
 
 require_cmd() {
-  if ! command -v "$1" &>/dev/null; then
-    err "Required command not found: $1"
-    exit 1
-  fi
+  command -v "$1" &>/dev/null || die "'$1' is not installed. $2"
 }
 
-require_railway_auth() {
-  if ! railway whoami &>/dev/null 2>&1; then
-    err "Not authenticated with Railway. Run: railway login"
-    exit 1
-  fi
-}
+# ---------------------------------------------------------------------------
+# Commands
+# ---------------------------------------------------------------------------
 
 cmd_setup() {
-  header "Setting up Railway project: $PROJECT_NAME"
-  require_cmd railway
-  require_railway_auth
-  log "Creating project..."
-  railway init --name "$PROJECT_NAME" || warn "Project may already exist"
-  log "Adding Redis plugin..."
-  railway add --plugin redis || warn "Redis plugin may already exist"
-  header "Creating services"
+  require_cmd railway "Install from https://docs.railway.app/develop/cli"
+  log "Creating Railway project: $PROJECT_NAME"
+  railway init --name "$PROJECT_NAME"
+
   for svc in "${SERVICES[@]}"; do
-    log "Creating service: $svc"
-    railway service create "$svc" || warn "Service $svc may already exist"
+    log "Adding service: $svc"
+    railway service create "$svc"
   done
-  header "Setup complete"
-  echo "Next: Set environment variables and run deploy"
+
+  log "Adding Redis plugin..."
+  railway plugin add redis
+
+  log "Setup complete. Configure env vars with: $0 env --service <name> --file <envfile>"
 }
 
 cmd_deploy() {
+  require_cmd railway "Install from https://docs.railway.app/develop/cli"
   local target_service=""
+
   while [[ $# -gt 0 ]]; do
-    case "$1" in
+    case $1 in
       --service|-s) target_service="$2"; shift 2 ;;
-      *) err "Unknown option: $1"; exit 1 ;;
+      *) die "Unknown option: $1" ;;
     esac
   done
-  require_cmd railway
-  require_railway_auth
+
   if [[ -n "$target_service" ]]; then
-    header "Deploying service: $target_service"
-    railway up --service "$target_service" --detach
-    ok "Triggered deployment for $target_service"
+    _deploy_service "$target_service"
   else
-    header "Deploying all services"
     for svc in "${SERVICES[@]}"; do
-      log "Deploying: $svc"
-      railway up --service "$svc" --detach
-      ok "Triggered: $svc"
+      _deploy_service "$svc"
     done
-    ok "All deployments triggered."
   fi
+}
+
+_deploy_service() {
+  local svc="$1"
+  local dockerfile="${DOCKERFILE_PATHS[$svc]:-}"
+  [[ -n "$dockerfile" ]] || die "Unknown service: $svc"
+
+  log "Deploying $svc (Dockerfile: $dockerfile)..."
+  railway up \
+    --service "$svc" \
+    --dockerfile "$dockerfile" \
+    --detach
+  log "$svc deployment triggered."
 }
 
 cmd_status() {
-  require_cmd railway
-  require_railway_auth
-  header "Deployment status: $PROJECT_NAME"
-  for svc in "${SERVICES[@]}"; do
-    status=$(railway status --service "$svc" 2>/dev/null | grep -i "status" | head -1 || echo "unknown")
-    echo "$svc: $status"
-  done
+  require_cmd railway "Install from https://docs.railway.app/develop/cli"
+  require_cmd jq      "Install via: brew install jq  OR  apt-get install jq"
+
+  log "Fetching deployment status..."
+  railway status --json | jq '.deployments[] | {service: .serviceName, status: .status, url: .url}'
 }
 
 cmd_logs() {
+  require_cmd railway "Install from https://docs.railway.app/develop/cli"
   local target_service=""
+
   while [[ $# -gt 0 ]]; do
-    case "$1" in
+    case $1 in
       --service|-s) target_service="$2"; shift 2 ;;
-      *) err "Unknown option: $1"; exit 1 ;;
+      *) die "Unknown option: $1" ;;
     esac
   done
-  require_cmd railway
-  require_railway_auth
-  if [[ -z "$target_service" ]]; then
-    err "Specify a service with --service <name>"
-    exit 1
-  fi
-  header "Streaming logs: $target_service"
+
+  [[ -n "$target_service" ]] || die "--service flag required for logs command."
+  log "Streaming logs for: $target_service"
   railway logs --service "$target_service"
 }
 
+cmd_env() {
+  require_cmd railway "Install from https://docs.railway.app/develop/cli"
+  local target_service=""
+  local env_file=""
+
+  while [[ $# -gt 0 ]]; do
+    case $1 in
+      --service|-s) target_service="$2"; shift 2 ;;
+      --file|-f)    env_file="$2";       shift 2 ;;
+      *) die "Unknown option: $1" ;;
+    esac
+  done
+
+  [[ -n "$target_service" ]] || die "--service flag required."
+  [[ -n "$env_file" ]]       || die "--file flag required."
+  [[ -f "$env_file" ]]       || die "File not found: $env_file"
+
+  log "Setting env vars for $target_service from $env_file..."
+  while IFS= read -r line || [[ -n "$line" ]]; do
+    [[ "$line" =~ ^#.*$ || -z "$line" ]] && continue
+    key="${line%%=*}"
+    value="${line#*=}"
+    railway variables set "$key=$value" --service "$target_service"
+  done < "$env_file"
+  log "Done."
+}
+
 cmd_open() {
-  require_cmd railway
+  require_cmd railway "Install from https://docs.railway.app/develop/cli"
   railway open
 }
 
-usage() {
-  cat <<EOF
-ZenSensei Railway Deployment Helper
+# ---------------------------------------------------------------------------
+# Entrypoint
+# ---------------------------------------------------------------------------
 
-Usage: $(basename "$0") <command> [options]
-
-Commands:
-  setup                     Create Railway project, services, and Redis plugin
-  deploy [--service NAME]   Deploy all services, or a single one
-  status                    Show deployment status for all services
-  logs --service NAME       Stream logs from a specific service
-  open                      Open Railway dashboard in browser
-
-Service names:
-$(printf "  - %s\n" "${SERVICES[@]}")
-EOF
-}
-
-COMMAND="${1:-help}"
+COMMAND="${1:-}"
 shift || true
 
 case "$COMMAND" in
-  setup)   cmd_setup "$@" ;;
-  deploy)  cmd_deploy "$@" ;;
-  status)  cmd_status "$@" ;;
-  logs)    cmd_logs "$@" ;;
-  open)    cmd_open "$@" ;;
-  help|-h|--help) usage ;;
-  *) err "Unknown command: $COMMAND"; usage; exit 1 ;;
+  setup)  cmd_setup  "$@" ;;
+  deploy) cmd_deploy "$@" ;;
+  status) cmd_status "$@" ;;
+  logs)   cmd_logs   "$@" ;;
+  env)    cmd_env    "$@" ;;
+  open)   cmd_open   "$@" ;;
+  *)
+    echo "Usage: $0 {setup|deploy|status|logs|env|open} [options]"
+    echo "Run '$0 --help' for detailed usage."
+    exit 1
+    ;;
 esac

@@ -10,95 +10,86 @@ POST /decisions/compare            Compare multiple options side by side
 
 from __future__ import annotations
 
-from typing import Annotated, Optional
+import logging
+from typing import Annotated
 
-import structlog
-from fastapi import APIRouter, Depends, Query, status
+from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi.responses import ORJSONResponse
+
+from shared.auth import get_current_user
+from shared.models.base import BaseResponse
 
 from services.ai_reasoning_service.schemas import (
-    DecisionAnalysis,
+    DecisionAnalysisRequest,
+    DecisionAnalysisResponse,
     DecisionCompareRequest,
     DecisionCompareResponse,
-    DecisionContext,
     DecisionHistoryResponse,
 )
-from services.ai_reasoning_service.services.decision_analyzer import DecisionAnalyzer
-from services.ai_reasoning_service.services.llm_client import LLMClient
-
-logger = structlog.get_logger(__name__)
-
-router = APIRouter()
-
-# ─── Dependency injection ─────────────────────────────────────────────────────
-
-_shared_llm = LLMClient()
-_shared_analyzer = DecisionAnalyzer(llm_client=_shared_llm)
-
-
-def get_decision_analyzer() -> DecisionAnalyzer:
-    return _shared_analyzer
-
-
-# ─── Routes ───────────────────────────────────────────────────────────────────
-
-
-@router.post(
-    "/analyze",
-    response_model=DecisionAnalysis,
-    status_code=status.HTTP_201_CREATED,
-    summary="Analyze a decision",
-    description=(
-        "Runs a multi-factor decision analysis covering goal impact, relationship effect, "
-        "financial implications, historical patterns, opportunity cost, and risk assessment. "
-        "Returns a structured analysis with a recommended option and composite score."
-    ),
+from services.ai_reasoning_service.services.reasoning_service import (
+    ReasoningService,
+    get_reasoning_service,
 )
+
+logger = logging.getLogger(__name__)
+
+router = APIRouter(prefix="/decisions", tags=["decisions"])
+
+
+# ─── Dependency helpers ───────────────────────────────────────────────────────
+
+
+def _svc() -> ReasoningService:
+    return get_reasoning_service()
+
+
+CurrentUser = Annotated[dict, Depends(get_current_user)]
+Svc = Annotated[ReasoningService, Depends(_svc)]
+
+
+# ─── Routes ─────────────────────────────────────────────────────────────────
+
+
+@router.post("/analyze", response_class=ORJSONResponse, status_code=status.HTTP_200_OK)
 async def analyze_decision(
-    decision_context: DecisionContext,
-    analyzer: DecisionAnalyzer = Depends(get_decision_analyzer),
-) -> DecisionAnalysis:
-    return await analyzer.analyze_decision(
-        user_id=decision_context.user_id,
-        decision_context=decision_context,
+    payload: DecisionAnalysisRequest,
+    current_user: CurrentUser,
+    svc: Svc,
+) -> ORJSONResponse:
+    """Analyze a multi-factor decision for the authenticated user."""
+    result: DecisionAnalysisResponse = await svc.analyze_decision(
+        user_id=current_user["uid"],
+        payload=payload,
     )
+    return ORJSONResponse(BaseResponse(data=result.model_dump()).model_dump())
 
 
 @router.get(
     "/{user_id}/history",
-    response_model=DecisionHistoryResponse,
-    summary="Past decision analyses",
-    description="Returns a paginated list of the user's past decision analyses, newest first.",
+    response_class=ORJSONResponse,
+    status_code=status.HTTP_200_OK,
 )
 async def get_decision_history(
     user_id: str,
-    page: Annotated[int, Query(ge=1)] = 1,
-    page_size: Annotated[int, Query(ge=1, le=100)] = 20,
-    analyzer: DecisionAnalyzer = Depends(get_decision_analyzer),
-) -> DecisionHistoryResponse:
-    offset = (page - 1) * page_size
-    items, total = await analyzer.get_history(
-        user_id=user_id, limit=page_size, offset=offset
-    )
-    return DecisionHistoryResponse(
-        user_id=user_id,
-        analyses=items,
-        total=total,
-    )
+    current_user: CurrentUser,
+    svc: Svc,
+) -> ORJSONResponse:
+    """Return past decision analyses. Users can only access their own history."""
+    if current_user["uid"] != user_id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
+    history: DecisionHistoryResponse = await svc.get_decision_history(user_id=user_id)
+    return ORJSONResponse(BaseResponse(data=history.model_dump()).model_dump())
 
 
-@router.post(
-    "/compare",
-    response_model=DecisionCompareResponse,
-    status_code=status.HTTP_201_CREATED,
-    summary="Compare multiple options side by side",
-    description=(
-        "Compares two or more options for a given decision context. "
-        "Scores each option on goal alignment, financial score, relationship impact, "
-        "and risk before recommending the top-ranked option."
-    ),
-)
-async def compare_options(
-    request: DecisionCompareRequest,
-    analyzer: DecisionAnalyzer = Depends(get_decision_analyzer),
-) -> DecisionCompareResponse:
-    return await analyzer.compare_options(request)
+@router.post("/compare", response_class=ORJSONResponse, status_code=status.HTTP_200_OK)
+async def compare_decisions(
+    payload: DecisionCompareRequest,
+    current_user: CurrentUser,
+    svc: Svc,
+) -> ORJSONResponse:
+    """Compare multiple decision options for the authenticated user."""
+    result: DecisionCompareResponse = await svc.compare_decisions(
+        user_id=current_user["uid"],
+        payload=payload,
+    )
+    return ORJSONResponse(BaseResponse(data=result.model_dump()).model_dump())
