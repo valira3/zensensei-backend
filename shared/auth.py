@@ -2,13 +2,27 @@
 ZenSensei Shared Auth
 
 JWT token creation/verification, password hashing, and a
-FastAPI dependency for retrieving the current authenticated user.
+FastAPI dependency for extracting the current user from a Bearer token.
+
+Token types
+-----------
+access   Short-lived (default 30 min).  Carries user claims.
+refresh  Long-lived (default 30 days).  Used only to rotate the pair.
+
+Each token embeds a ``type`` claim so access tokens cannot be used
+where a refresh token is expected and vice-versa.
+
+Each token also embeds a ``jti`` (JWT ID) — a random UUID that uniquely
+identifies the token.  The auth service uses the jti to key revocation
+records in Redis (``zensensei:refresh:{user_id}:{token_hash}``).
 """
 
 from __future__ import annotations
 
+import uuid
+import logging
 from datetime import datetime, timedelta, timezone
-from typing import Any
+from typing import Any, Optional
 
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
@@ -17,167 +31,161 @@ from passlib.context import CryptContext
 
 from shared.config import ZenSenseiConfig, get_config
 
-# ─── Password hashing ───────────────────────────────────────────────────────────────
+logger = logging.getLogger(__name__)
 
 _pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+_bearer_scheme = HTTPBearer(auto_error=False)
+
+
+# ─── Password helpers ─────────────────────────────────────────────────────────
 
 
 def get_password_hash(password: str) -> str:
-    """Return a bcrypt hash of the supplied plain-text password."""
     return _pwd_context.hash(password)
 
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
-    """Return True if *plain_password* matches *hashed_password*."""
     return _pwd_context.verify(plain_password, hashed_password)
 
 
-# ─── Token creation ───────────────────────────────────────────────────────────────
+# ─── Token creation ──────────────────────────────────────────────────────────
+
 
 def create_access_token(
     data: dict[str, Any],
-    expires_delta: timedelta | None = None,
     config: ZenSenseiConfig | None = None,
+    expires_delta: timedelta | None = None,
 ) -> str:
     """
     Create a signed JWT access token.
 
-    Args:
-        data: Claims to embed in the token (must include a ``sub`` field).
-        expires_delta: Custom expiry override; defaults to
-            ``JWT_ACCESS_TOKEN_EXPIRE_MINUTES`` from config.
-        config: Optional config override for testing.
-
-    Returns:
-        Encoded JWT string.
+    Adds ``type=access``, ``jti``, ``iat``, and ``exp`` claims automatically.
     """
     cfg = config or get_config()
-    payload = data.copy()
-
-    expire = datetime.now(tz=timezone.utc) + (
-        expires_delta or timedelta(minutes=cfg.jwt_access_token_expire_minutes)
+    to_encode = data.copy()
+    now = datetime.now(tz=timezone.utc)
+    expire = now + (
+        expires_delta
+        if expires_delta is not None
+        else timedelta(minutes=cfg.jwt_access_token_expire_minutes)
     )
-    payload.update(
-        {
-            "exp": expire,
-            "iat": datetime.now(tz=timezone.utc),
-            "type": "access",
-        }
-    )
-    return jwt.encode(payload, cfg.jwt_secret_key, algorithm=cfg.jwt_algorithm)
+    to_encode.update({
+        "type": "access",
+        "jti": str(uuid.uuid4()),
+        "iat": now,
+        "exp": expire,
+    })
+    return jwt.encode(to_encode, cfg.secret_key, algorithm=cfg.jwt_algorithm)
 
 
 def create_refresh_token(
     data: dict[str, Any],
     config: ZenSenseiConfig | None = None,
+    expires_delta: timedelta | None = None,
 ) -> str:
     """
-    Create a signed JWT refresh token with a longer expiry.
+    Create a signed JWT refresh token.
 
-    Args:
-        data: Claims to embed (must include a ``sub`` field).
-        config: Optional config override for testing.
-
-    Returns:
-        Encoded JWT string.
+    Adds ``type=refresh``, ``jti``, ``iat``, and ``exp`` claims automatically.
     """
     cfg = config or get_config()
-    payload = data.copy()
-
-    expire = datetime.now(tz=timezone.utc) + timedelta(days=cfg.jwt_refresh_token_expire_days)
-    payload.update(
-        {
-            "exp": expire,
-            "iat": datetime.now(tz=timezone.utc),
-            "type": "refresh",
-        }
+    to_encode = data.copy()
+    now = datetime.now(tz=timezone.utc)
+    expire = now + (
+        expires_delta
+        if expires_delta is not None
+        else timedelta(days=cfg.jwt_refresh_token_expire_days)
     )
-    return jwt.encode(payload, cfg.jwt_secret_key, algorithm=cfg.jwt_algorithm)
+    to_encode.update({
+        "type": "refresh",
+        "jti": str(uuid.uuid4()),
+        "iat": now,
+        "exp": expire,
+    })
+    return jwt.encode(to_encode, cfg.secret_key, algorithm=cfg.jwt_algorithm)
 
 
-# ─── Token verification ────────────────────────────────────────────────────────────
+# ─── Token verification ───────────────────────────────────────────────────────
+
 
 def verify_token(
     token: str,
-    expected_type: str = "access",
+    token_type: str = "access",
+    config: ZenSenseiConfig | None = None,
+) -> Optional[dict[str, Any]]:
+    """
+    Decode and verify a JWT token.
+
+    Returns the decoded payload dict if valid, or ``None`` on any failure.
+    Validates the ``type`` claim so access tokens cannot be reused as refresh
+    tokens and vice-versa.
+    """
+    cfg = config or get_config()
+    try:
+        payload = jwt.decode(
+            token,
+            cfg.secret_key,
+            algorithms=[cfg.jwt_algorithm],
+        )
+        if payload.get("type") != token_type:
+            logger.warning(
+                "Token type mismatch: expected %s, got %s",
+                token_type,
+                payload.get("type"),
+            )
+            return None
+        return payload
+    except JWTError as exc:
+        logger.debug("JWT verification failed: %s", exc)
+        return None
+
+
+# ─── FastAPI dependency ───────────────────────────────────────────────────────
+
+
+async def get_current_user(
+    credentials: Optional[HTTPAuthorizationCredentials] = Depends(_bearer_scheme),
     config: ZenSenseiConfig | None = None,
 ) -> dict[str, Any]:
     """
-    Decode and validate a JWT token.
-
-    Args:
-        token: The raw JWT string.
-        expected_type: ``"access"`` or ``"refresh"`` — checked against the
-            ``type`` claim embedded at creation time.
-        config: Optional config override for testing.
-
-    Returns:
-        Decoded token payload dict.
+    FastAPI dependency that extracts and validates the current user from
+    the ``Authorization: Bearer <token>`` header.
 
     Raises:
-        HTTPException 401 if the token is invalid, expired, or the wrong type.
+        HTTPException 401 if the token is missing, malformed, or invalid.
     """
-    cfg = config or get_config()
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Could not validate credentials",
         headers={"WWW-Authenticate": "Bearer"},
     )
-    try:
-        payload: dict[str, Any] = jwt.decode(
-            token,
-            cfg.jwt_secret_key,
-            algorithms=[cfg.jwt_algorithm],
-        )
-    except JWTError:
+
+    if credentials is None or not credentials.credentials:
         raise credentials_exception
 
-    token_type: str | None = payload.get("type")
-    if token_type != expected_type:
-        raise credentials_exception
-
-    sub: str | None = payload.get("sub")
-    if sub is None:
+    payload = verify_token(
+        credentials.credentials,
+        token_type="access",
+        config=config,
+    )
+    if payload is None:
         raise credentials_exception
 
     return payload
-
-
-# ─── FastAPI dependency ────────────────────────────────────────────────────────────
-
-_http_bearer = HTTPBearer(auto_error=True)
-
-
-async def get_current_user(
-    credentials: HTTPAuthorizationCredentials = Depends(_http_bearer),
-    config: ZenSenseiConfig = Depends(get_config),
-) -> dict[str, Any]:
-    """
-    FastAPI dependency that extracts and validates the current user
-    from the ``Authorization: Bearer <token>`` header.
-
-    Returns:
-        The decoded JWT payload dict, which includes at minimum
-        ``sub`` (user ID) and standard JWT claims.
-
-    Raises:
-        HTTPException 401 on invalid / missing / expired token.
-    """
-    return verify_token(credentials.credentials, expected_type="access", config=config)
 
 
 async def get_current_active_user(
     current_user: dict[str, Any] = Depends(get_current_user),
 ) -> dict[str, Any]:
     """
-    Extends ``get_current_user`` by checking the ``is_active`` claim.
+    FastAPI dependency that additionally checks the ``is_active`` claim.
 
     Raises:
-        HTTPException 403 if the account is disabled.
+        HTTPException 403 if the account is marked inactive.
     """
     if not current_user.get("is_active", True):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Account is disabled",
+            detail="Account is inactive",
         )
     return current_user

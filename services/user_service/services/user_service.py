@@ -1,8 +1,9 @@
 """
 ZenSensei User Service - User CRUD Service
 
-Business logic for reading, updating, and deleting user profiles,
-managing preferences, subscription tiers, and computing user statistics.
+Business logic for reading, updating, and deleting user accounts.
+Handles profile management, preferences, subscription tracking,
+onboarding state, and cascading deletion across all services.
 
 Falls back to in-memory storage when Firestore/Neo4j are unavailable.
 """
@@ -11,6 +12,7 @@ from __future__ import annotations
 
 import sys
 import os
+import uuid
 from datetime import datetime, timezone
 from typing import Any
 
@@ -24,394 +26,152 @@ if _shared_path not in sys.path:
 
 from fastapi import HTTPException, status
 
-from shared.models.user import LifeStage, SubscriptionTier, UserResponse, UserUpdate
-
-from services.user_service.config import UserServiceConfig, get_user_service_config
-from services.user_service.schemas import (
-    SubscriptionResponse,
-    SubscriptionUpdateRequest,
-    UserPreferencesResponse,
-    UserPreferencesUpdate,
-    UserStatsResponse,
-)
-from services.user_service.services.auth_service import (
-    _firestore_get_user_by_id,
-    _firestore_update_user,
-    _user_record_to_response,
-    _users_store,
-)
+from shared.models.user import LifeStage, SubscriptionTier, UserResponse
 
 logger = structlog.get_logger(__name__)
 
-# ─── In-memory fallback stores for preferences ────────────────────────────────
-_preferences_store: dict[str, dict[str, Any]] = {}
-_stats_store: dict[str, dict[str, Any]] = {}
+
+# ─── In-memory fallback (mirrors auth_service) ───────────────────────────────────
+
+# Shared with auth_service via module reference; import lazily to avoid circular deps.
+def _get_users_store() -> dict[str, dict[str, Any]]:
+    from services.user_service.services import auth_service
+    return auth_service._users_store
 
 
-# ─── Internal helpers ─────────────────────────────────────────────────────────
+def _get_email_index() -> dict[str, str]:
+    from services.user_service.services import auth_service
+    return auth_service._email_index
 
 
-async def _get_user_or_404(user_id: str) -> dict[str, Any]:
-    """Fetch a user record or raise 404."""
-    record = await _firestore_get_user_by_id(user_id)
-    if not record:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail={
-                "error_code": "USER_NOT_FOUND",
-                "message": f"User '{user_id}' not found.",
-            },
-        )
-    return record
+# ─── Firestore helpers ───────────────────────────────────────────────────────────
 
 
-async def _firestore_get_preferences(user_id: str) -> dict[str, Any] | None:
-    """Fetch preferences from Firestore with in-memory fallback."""
+async def _fs_get(user_id: str) -> dict[str, Any] | None:
     try:
         from shared.database.firestore import get_firestore_client
         client = get_firestore_client()
         if client._db is not None:
-            return await client.get("user_preferences", user_id)
+            return await client.get("users", user_id)
     except Exception as exc:
-        logger.warning("Firestore unavailable for preferences", error=str(exc))
-    return _preferences_store.get(user_id)
+        logger.warning("Firestore unavailable", error=str(exc))
+    return _get_users_store().get(user_id)
 
 
-async def _firestore_set_preferences(user_id: str, data: dict[str, Any]) -> None:
-    """Persist preferences to Firestore with in-memory fallback."""
+async def _fs_update(user_id: str, data: dict[str, Any]) -> None:
     try:
         from shared.database.firestore import get_firestore_client
         client = get_firestore_client()
         if client._db is not None:
-            await client.set("user_preferences", user_id, data, merge=True)
+            await client.update("users", user_id, data)
             return
     except Exception as exc:
-        logger.warning("Firestore unavailable for preferences", error=str(exc))
-    existing = _preferences_store.get(user_id, {})
-    existing.update(data)
-    _preferences_store[user_id] = existing
+        logger.warning("Firestore unavailable", error=str(exc))
+    store = _get_users_store()
+    if user_id in store:
+        store[user_id].update(data)
 
 
-# ─── User CRUD ────────────────────────────────────────────────────────────────
+async def _fs_delete(user_id: str) -> None:
+    try:
+        from shared.database.firestore import get_firestore_client
+        client = get_firestore_client()
+        if client._db is not None:
+            await client.delete("users", user_id)
+            return
+    except Exception as exc:
+        logger.warning("Firestore unavailable", error=str(exc))
+    store = _get_users_store()
+    record = store.pop(user_id, None)
+    if record:
+        _get_email_index().pop(record.get("email", ""), None)
 
 
-async def get_user(user_id: str) -> UserResponse:
-    """
-    Retrieve a public-safe user profile by ID.
+# ─── Public API ───────────────────────────────────────────────────────────────
 
-    Raises:
-        HTTPException 404 if the user does not exist.
-    """
-    record = await _get_user_or_404(user_id)
-    logger.debug("Fetched user profile", user_id=user_id)
-    return _user_record_to_response(record)
+
+async def get_user(user_id: str) -> dict[str, Any] | None:
+    """Return a user's public profile dict, or None if not found."""
+    record = await _fs_get(user_id)
+    if not record:
+        return None
+    # Strip sensitive fields before returning
+    safe = {k: v for k, v in record.items() if k not in ("hashed_password",)}
+    return safe
 
 
 async def update_user(
     user_id: str,
-    update: UserUpdate,
-    requesting_user_id: str,
-) -> UserResponse:
+    updates: dict[str, Any],
+) -> dict[str, Any]:
     """
     Apply a partial update to a user's profile.
 
-    Only the user themselves (or an admin) may update their profile.
-
-    Raises:
-        HTTPException 403 if the requester is not the profile owner.
-        HTTPException 404 if the user does not exist.
+    Allowed fields: display_name, avatar_url, life_stage, bio.
+    Raises HTTPException 404 if user not found.
     """
-    if user_id != requesting_user_id:
+    _ALLOWED = {"display_name", "avatar_url", "life_stage", "bio"}
+    filtered = {k: v for k, v in updates.items() if k in _ALLOWED}
+    if not filtered:
         raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail={
-                "error_code": "FORBIDDEN",
-                "message": "You can only update your own profile.",
-            },
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="No updatable fields provided.",
         )
 
-    record = await _get_user_or_404(user_id)
+    filtered["updated_at"] = datetime.now(tz=timezone.utc).isoformat()
+    await _fs_update(user_id, filtered)
 
-    update_data: dict[str, Any] = update.model_dump(exclude_none=True, exclude_unset=True)
-    if not update_data:
-        return _user_record_to_response(record)
-
-    # Normalise email if provided
-    if "email" in update_data:
-        update_data["email"] = update_data["email"].lower().strip()
-
-    # Update is_premium derived field when subscription_tier changes
-    if "subscription_tier" in update_data:
-        tier = SubscriptionTier(update_data["subscription_tier"])
-        update_data["is_premium"] = tier in (SubscriptionTier.PREMIUM, SubscriptionTier.PRO)
-
-    update_data["updated_at"] = datetime.now(tz=timezone.utc)
-
-    await _firestore_update_user(user_id, update_data)
-
-    # Merge into cached record for response
-    record.update(update_data)
-    logger.info("User profile updated", user_id=user_id, fields=list(update_data.keys()))
-    return _user_record_to_response(record)
+    record = await _fs_get(user_id)
+    if not record:
+        raise HTTPException(status_code=404, detail="User not found.")
+    return {k: v for k, v in record.items() if k != "hashed_password"}
 
 
-async def delete_user(user_id: str, requesting_user_id: str) -> None:
+async def delete_user(user_id: str) -> None:
     """
-    Soft-delete a user by setting ``is_active=False``.
+    Permanently delete a user account and cascade to related services.
 
-    The user record is retained in Firestore for audit / recovery purposes.
-
-    Raises:
-        HTTPException 403 if the requester is not the profile owner.
-        HTTPException 404 if the user does not exist.
+    Raises HTTPException 404 if user not found.
     """
-    if user_id != requesting_user_id:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail={
-                "error_code": "FORBIDDEN",
-                "message": "You can only delete your own account.",
-            },
-        )
+    record = await _fs_get(user_id)
+    if not record:
+        raise HTTPException(status_code=404, detail="User not found.")
 
-    record = await _get_user_or_404(user_id)
+    # Cascade: delete Neo4j Person node
+    try:
+        from shared.database.neo4j import get_neo4j_client
+        client = get_neo4j_client()
+        if client._driver is not None:
+            await client.run_query(
+                "MATCH (p:Person {id: $id}) DETACH DELETE p",
+                {"id": user_id},
+            )
+    except Exception as exc:
+        logger.warning("Neo4j cascade delete failed", user_id=user_id, error=str(exc))
 
-    if not record.get("is_active", True):
-        # Already deactivated — idempotent
-        return
-
-    now = datetime.now(tz=timezone.utc)
-    await _firestore_update_user(
-        user_id,
-        {
-            "is_active": False,
-            "deactivated_at": now,
-            "updated_at": now,
-        },
-    )
-    logger.info("User soft-deleted", user_id=user_id)
-
-
-# ─── Preferences ────────────────────────────────────────────────────────────────
-
-
-async def get_user_preferences(user_id: str) -> UserPreferencesResponse:
-    """
-    Retrieve per-user notification and privacy preferences.
-
-    Returns default preferences if none have been saved yet.
-    """
-    await _get_user_or_404(user_id)  # Ensure user exists
-
-    raw = await _firestore_get_preferences(user_id)
-    if raw:
-        prefs_data = {**raw, "user_id": user_id}
-    else:
-        prefs_data = {"user_id": user_id}
-
-    return UserPreferencesResponse(**prefs_data)
-
-
-async def update_user_preferences(
-    user_id: str,
-    update: UserPreferencesUpdate,
-    requesting_user_id: str,
-) -> UserPreferencesResponse:
-    """
-    Partially update user preferences.
-
-    Raises:
-        HTTPException 403 if the requester is not the profile owner.
-        HTTPException 404 if the user does not exist.
-    """
-    if user_id != requesting_user_id:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail={
-                "error_code": "FORBIDDEN",
-                "message": "You can only update your own preferences.",
-            },
-        )
-
-    await _get_user_or_404(user_id)
-
-    update_data = update.model_dump(exclude_none=True, exclude_unset=True)
-    if update_data:
-        await _firestore_set_preferences(user_id, update_data)
-        logger.info("Preferences updated", user_id=user_id, fields=list(update_data.keys()))
-
-    # Return merged preferences
-    raw = await _firestore_get_preferences(user_id) or {}
-    return UserPreferencesResponse(user_id=user_id, **raw)
-
-
-# ─── Subscription ─────────────────────────────────────────────────────────────────
-
-
-_TIER_FEATURES: dict[str, list[str]] = {
-    SubscriptionTier.FREE: [
-        "basic_goals",
-        "basic_tasks",
-        "limited_insights",
-    ],
-    SubscriptionTier.PREMIUM: [
-        "basic_goals",
-        "basic_tasks",
-        "unlimited_insights",
-        "priority_support",
-        "advanced_analytics",
-        "integrations",
-    ],
-    SubscriptionTier.PRO: [
-        "basic_goals",
-        "basic_tasks",
-        "unlimited_insights",
-        "priority_support",
-        "advanced_analytics",
-        "integrations",
-        "ai_coaching",
-        "custom_reports",
-        "team_features",
-        "api_access",
-    ],
-}
-
-
-async def get_subscription(user_id: str) -> SubscriptionResponse:
-    """Return a user's current subscription details."""
-    record = await _get_user_or_404(user_id)
-    tier = SubscriptionTier(record.get("subscription_tier", SubscriptionTier.FREE))
-
-    return SubscriptionResponse(
-        user_id=user_id,
-        tier=tier,
-        is_premium=tier in (SubscriptionTier.PREMIUM, SubscriptionTier.PRO),
-        started_at=record.get("subscription_started_at"),
-        expires_at=record.get("subscription_expires_at"),
-        auto_renew=record.get("subscription_auto_renew", False),
-        billing_cycle=record.get("subscription_billing_cycle"),
-        features=_TIER_FEATURES.get(tier, []),
-    )
+    await _fs_delete(user_id)
+    logger.info("User deleted", user_id=user_id)
 
 
 async def update_subscription(
     user_id: str,
-    update: SubscriptionUpdateRequest,
-    requesting_user_id: str,
-) -> SubscriptionResponse:
+    tier: SubscriptionTier,
+) -> dict[str, Any]:
     """
-    Update a user's subscription tier.
+    Update the subscription tier for a user (admin operation).
 
-    In production this would integrate with Stripe/billing. For now it
-    directly updates the Firestore record.
-
-    Raises:
-        HTTPException 403 if the requester is not the profile owner.
+    Raises HTTPException 404 if user not found.
     """
-    if user_id != requesting_user_id:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail={
-                "error_code": "FORBIDDEN",
-                "message": "You can only update your own subscription.",
-            },
-        )
+    record = await _fs_get(user_id)
+    if not record:
+        raise HTTPException(status_code=404, detail="User not found.")
 
-    await _get_user_or_404(user_id)
+    is_premium = tier != SubscriptionTier.FREE
+    await _fs_update(user_id, {
+        "subscription_tier": tier,
+        "is_premium": is_premium,
+        "updated_at": datetime.now(tz=timezone.utc).isoformat(),
+    })
 
-    tier = update.tier
-    now = datetime.now(tz=timezone.utc)
-
-    update_payload: dict[str, Any] = {
-        "subscription_tier": str(tier),
-        "is_premium": tier in (SubscriptionTier.PREMIUM, SubscriptionTier.PRO),
-        "subscription_started_at": now,
-        "updated_at": now,
-    }
-    if update.billing_cycle:
-        update_payload["subscription_billing_cycle"] = update.billing_cycle
-
-    await _firestore_update_user(user_id, update_payload)
-    logger.info("Subscription updated", user_id=user_id, tier=tier)
-
-    return await get_subscription(user_id)
-
-
-# ─── Statistics ────────────────────────────────────────────────────────────────
-
-
-async def get_user_stats(user_id: str) -> UserStatsResponse:
-    """
-    Compute aggregated statistics for a user.
-
-    Queries Firestore collections for goals and tasks, and Neo4j for
-    insights. Falls back to zero-value stats when services are unavailable.
-    """
-    record = await _get_user_or_404(user_id)
-
-    goals_count = 0
-    active_goals_count = 0
-    tasks_count = 0
-    completed_tasks_count = 0
-    insights_count = 0
-
-    # ── Goals ────────────────────────────────────────────────────────────────
-    try:
-        from shared.database.firestore import get_firestore_client
-        client = get_firestore_client()
-        if client._db is not None:
-            goals = await client.query_collection(
-                "goals",
-                filters=[("user_id", "==", user_id)],
-                limit=1000,
-            )
-            goals_count = len(goals)
-            active_goals_count = sum(
-                1 for g in goals if g.get("status") in ("ACTIVE", "IN_PROGRESS")
-            )
-
-            tasks = await client.query_collection(
-                "tasks",
-                filters=[("user_id", "==", user_id)],
-                limit=1000,
-            )
-            tasks_count = len(tasks)
-            completed_tasks_count = sum(
-                1 for t in tasks if t.get("status") == "COMPLETED"
-            )
-    except Exception as exc:
-        logger.warning("Could not fetch goals/tasks stats from Firestore", error=str(exc))
-
-    # ── Insights ───────────────────────────────────────────────────────────────
-    try:
-        from shared.database.neo4j import get_neo4j_client
-        neo4j = get_neo4j_client()
-        if neo4j._driver is not None:
-            result = await neo4j.run_query_single(
-                "MATCH (p:Person {id: $id})-[:RECEIVES]->(i:Insight) RETURN count(i) AS cnt",
-                {"id": user_id},
-            )
-            insights_count = int(result.get("cnt", 0)) if result else 0
-    except Exception as exc:
-        logger.warning("Could not fetch insights count from Neo4j", error=str(exc))
-
-    # ── Streak (in-memory stats store, extendable) ───────────────────────────────
-    cached_stats = _stats_store.get(user_id, {})
-    current_streak = cached_stats.get("current_streak_days", 0)
-    longest_streak = cached_stats.get("longest_streak_days", 0)
-
-    created_at = record.get("created_at")
-    last_active = record.get("last_active_at")
-
-    return UserStatsResponse(
-        user_id=user_id,
-        goals_count=goals_count,
-        active_goals_count=active_goals_count,
-        tasks_count=tasks_count,
-        completed_tasks_count=completed_tasks_count,
-        insights_count=insights_count,
-        current_streak_days=current_streak,
-        longest_streak_days=longest_streak,
-        member_since=created_at,
-        last_active_at=last_active,
-    )
+    record = await _fs_get(user_id)
+    return {k: v for k, v in record.items() if k != "hashed_password"}

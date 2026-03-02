@@ -1,130 +1,112 @@
 """
 ZenSensei Shared Configuration
 
-Pydantic Settings class that reads all environment variables with
-sensible defaults for local development.
+Pydantic Settings class that reads all environment variables with the
+``ZENSENSEI_`` prefix and provides typed, validated config objects
+throughout the application.
+
+All fields have sensible defaults so the service can start in
+development without any environment variables set.
 """
 
 from __future__ import annotations
 
 from functools import lru_cache
-from typing import Literal
+from typing import Optional
 
 from pydantic import Field, field_validator
-from pydantic_settings import BaseSettings, SettingsConfigDict
+from pydantic_settings import BaseSettings
 
 
 class ZenSenseiConfig(BaseSettings):
-    """Central configuration for all ZenSensei services."""
+    """
+    Application-wide configuration loaded from environment variables.
 
-    model_config = SettingsConfigDict(
-        env_file=".env",
-        env_file_encoding="utf-8",
-        case_sensitive=False,
-        extra="ignore",
+    All variables are prefixed with ``ZENSENSEI_`` when read from the
+    environment (e.g. ``ZENSENSEI_SECRET_KEY``).
+    """
+
+    model_config = {"env_prefix": "ZENSENSEI_", "case_sensitive": False}
+
+    # ─── Core security ────────────────────────────────────────────────────────────
+    secret_key: str = Field(
+        default="dev-insecure-change-me-in-production",
+        description="Secret key for JWT signing.  Must be long and random in production.",
     )
 
-    # ─── Core ───────────────────────────────────────────────────────────────────
-    environment: Literal["development", "staging", "production"] = "development"
-    debug: bool = True
-    secret_key: str = "change-me-in-production"
-    api_version: str = "v1"
+    # ─── JWT ───────────────────────────────────────────────────────────────────────
+    jwt_algorithm: str = Field(default="HS256", description="JWT signing algorithm.")
+    jwt_access_token_expire_minutes: int = Field(
+        default=30,
+        ge=1,
+        description="Access token lifetime in minutes.",
+    )
+    jwt_refresh_token_expire_days: int = Field(
+        default=30,
+        ge=1,
+        description="Refresh token lifetime in days.",
+    )
 
-    # ─── Service Ports ────────────────────────────────────────────────────────────
-    user_service_port: int = Field(default=8001, ge=1024, le=65535)
-    graph_query_service_port: int = Field(default=8002, ge=1024, le=65535)
-    ai_reasoning_service_port: int = Field(default=8003, ge=1024, le=65535)
-    integration_service_port: int = Field(default=8004, ge=1024, le=65535)
-    notification_service_port: int = Field(default=8005, ge=1024, le=65535)
-    analytics_service_port: int = Field(default=8006, ge=1024, le=65535)
-    api_gateway_port: int = Field(default=4000, ge=1024, le=65535)
+    # ─── Database ────────────────────────────────────────────────────────────────
+    firestore_project_id: Optional[str] = Field(
+        default=None,
+        description="Google Cloud project ID for Firestore.",
+    )
+    neo4j_uri: str = Field(
+        default="bolt://localhost:7687",
+        description="Neo4j connection URI.",
+    )
+    neo4j_user: str = Field(default="neo4j", description="Neo4j username.")
+    neo4j_password: str = Field(default="password", description="Neo4j password.")
+    redis_url: str = Field(
+        default="redis://localhost:6379",
+        description="Redis connection URL.",
+    )
 
-    # ─── Neo4j ─────────────────────────────────────────────────────────────────
-    neo4j_uri: str = "bolt://localhost:7687"
-    neo4j_user: str = "neo4j"
-    neo4j_password: str = "localdev"
-    neo4j_max_connection_pool_size: int = 50
-    neo4j_connection_timeout: int = 30
+    # ─── Email / notifications ───────────────────────────────────────────────────
+    sendgrid_api_key: Optional[str] = Field(
+        default=None,
+        description="SendGrid API key for transactional email.",
+    )
+    from_email: str = Field(
+        default="noreply@zensensei.app",
+        description="Default sender address for outgoing emails.",
+    )
+    frontend_url: str = Field(
+        default="http://localhost:3000",
+        description="Frontend base URL (used in email links).",
+    )
 
-    # ─── Redis ───────────────────────────────────────────────────────────────────
-    redis_host: str = "localhost"
-    redis_port: int = Field(default=6379, ge=1, le=65535)
-    redis_password: str = ""
-    redis_db: int = 0
-    redis_max_connections: int = 20
-    redis_socket_timeout: float = 5.0
+    # ─── Service ports ───────────────────────────────────────────────────────────
+    user_service_port: int = Field(default=8001, ge=1, le=65535)
+    insight_service_port: int = Field(default=8002, ge=1, le=65535)
+    integration_service_port: int = Field(default=8003, ge=1, le=65535)
+    notification_service_port: int = Field(default=8004, ge=1, le=65535)
+    goal_service_port: int = Field(default=8005, ge=1, le=65535)
 
-    # ─── Firebase / Identity Platform ───────────────────────────────────────────
-    firebase_project_id: str = "zensensei-platform"
-    firebase_credentials_path: str = "./credentials/firebase-sa.json"
+    # ─── Environment ────────────────────────────────────────────────────────────
+    environment: str = Field(
+        default="development",
+        description="Deployment environment: 'development', 'staging', or 'production'.",
+    )
+    debug: bool = Field(default=False, description="Enable debug mode.")
+    log_level: str = Field(default="INFO", description="Logging level.")
 
-    # ─── Google Cloud ────────────────────────────────────────────────────────────
-    gcp_project_id: str = "zensensei-platform"
-    gcp_region: str = "us-central1"
-
-    # ─── BigQuery ─────────────────────────────────────────────────────────────────
-    bigquery_dataset: str = "analytics"
-
-    # ─── Pub/Sub Topics ───────────────────────────────────────────────────────────
-    pubsub_user_events_topic: str = "user-events"
-    pubsub_graph_updates_topic: str = "graph-updates"
-    pubsub_ai_jobs_topic: str = "ai-jobs"
-
-    # ─── AI / ML ───────────────────────────────────────────────────────────────
-    gemini_model: str = "gemini-1.5-pro"
-    vertex_ai_location: str = "us-central1"
-
-    # ─── SendGrid ───────────────────────────────────────────────────────────────
-    sendgrid_api_key: str = ""
-    sendgrid_from_email: str = "noreply@zensensei.net"
-
-    # ─── Integration OAuth ──────────────────────────────────────────────────────────
-    google_client_id: str = ""
-    google_client_secret: str = ""
-    plaid_client_id: str = ""
-    plaid_secret: str = ""
-
-    # ─── JWT ────────────────────────────────────────────────────────────────────
-    jwt_secret_key: str = "change-me-in-production"
-    jwt_algorithm: str = "HS256"
-    jwt_access_token_expire_minutes: int = 15
-    jwt_refresh_token_expire_days: int = 30
-
-    # ─── CORS ───────────────────────────────────────────────────────────────────
-    cors_origins: list[str] = [
-        "http://localhost:3000",
-        "http://localhost:4000",
-        "https://app.zensensei.net",
-    ]
-
-    # ─── Rate Limiting ────────────────────────────────────────────────────────────
-    rate_limit_requests_per_minute: int = 60
-    rate_limit_burst: int = 10
-
-    @field_validator("cors_origins", mode="before")
+    @field_validator("secret_key")
     @classmethod
-    def parse_cors_origins(cls, v: str | list[str]) -> list[str]:
-        """Support comma-separated string from environment variable."""
-        if isinstance(v, str):
-            return [origin.strip() for origin in v.split(",") if origin.strip()]
+    def secret_key_must_not_be_default_in_prod(cls, v: str, info: Any) -> str:  # type: ignore[override]
+        # Can't access other fields easily in Pydantic v2 validator without model_validator
+        # Just warn if it looks like the insecure default
+        if v == "dev-insecure-change-me-in-production":
+            import logging as _logging
+            _logging.getLogger(__name__).warning(
+                "SECRET_KEY is set to the insecure default value. "
+                "Set ZENSENSEI_SECRET_KEY to a long random string in production."
+            )
         return v
-
-    @property
-    def is_production(self) -> bool:
-        return self.environment == "production"
-
-    @property
-    def is_development(self) -> bool:
-        return self.environment == "development"
-
-    @property
-    def redis_url(self) -> str:
-        if self.redis_password:
-            return f"redis://:{self.redis_password}@{self.redis_host}:{self.redis_port}/{self.redis_db}"
-        return f"redis://{self.redis_host}:{self.redis_port}/{self.redis_db}"
 
 
 @lru_cache(maxsize=1)
 def get_config() -> ZenSenseiConfig:
-    """Return a cached singleton config instance."""
+    """Return the cached application configuration singleton."""
     return ZenSenseiConfig()
