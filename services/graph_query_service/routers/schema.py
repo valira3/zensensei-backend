@@ -67,79 +67,59 @@ async def init_schema(
 @router.get(
     "/status",
     response_model=BaseResponse[SchemaStatusResponse],
-    summary="Get graph statistics and schema state",
+    summary="Graph statistics and schema state",
 )
 async def get_schema_status(
     schema: Annotated[SchemaService, Depends(_schema)],
-    cache: Annotated[CacheService, Depends(_cache)],
+    current_user: Annotated[dict[str, Any], Depends(get_current_user)],
 ) -> BaseResponse[SchemaStatusResponse]:
-    cached = await cache.get_schema_status()
-    if cached:
-        return BaseResponse(data=SchemaStatusResponse(**cached), message="OK (cached)")
-
-    raw = await schema.get_status()
-
-    node_counts = [
-        LabelCount(label=c.get("label", c.get("type", "")), count=int(c.get("count", 0)))
-        for c in raw.get("node_counts", [])
+    raw = await schema.get_schema_status()
+    label_counts = [
+        LabelCount(label=lc["label"], count=lc["count"]) for lc in raw.get("label_counts", [])
     ]
-    rel_counts = [
-        RelTypeCount(type=c.get("type", ""), count=int(c.get("count", 0)))
-        for c in raw.get("relationship_counts", [])
+    rel_type_counts = [
+        RelTypeCount(type=rt["type"], count=rt["count"])
+        for rt in raw.get("rel_type_counts", [])
     ]
     result = SchemaStatusResponse(
-        node_counts=node_counts,
-        relationship_counts=rel_counts,
         total_nodes=raw.get("total_nodes", 0),
         total_relationships=raw.get("total_relationships", 0),
-        indexes_initialized=raw.get("indexes_initialized", False),
-        constraints_initialized=raw.get("constraints_initialized", False),
+        label_counts=label_counts,
+        rel_type_counts=rel_type_counts,
+        indexes=raw.get("indexes", []),
+        constraints=raw.get("constraints", []),
     )
-    await cache.set_schema_status(result.model_dump())
     return BaseResponse(data=result)
 
 
 @router.post(
     "/seed",
-    status_code=status.HTTP_201_CREATED,
     response_model=BaseResponse[SeedDataResponse],
-    summary="Seed comprehensive sample data (all 10 node types)",
+    summary="Seed sample data into the graph",
 )
 async def seed_data(
     schema: Annotated[SchemaService, Depends(_schema)],
     cache: Annotated[CacheService, Depends(_cache)],
     current_user: Annotated[dict[str, Any], Depends(get_current_user)],
 ) -> BaseResponse[SeedDataResponse]:
-    raw = await schema.seed_sample_data()
-    # Bust all caches after seeding
-    await cache.invalidate_entity("node")
-    await cache.invalidate_entity("relationship")
+    raw = await schema.seed_data()
     await cache.invalidate_entity("schema")
     result = SeedDataResponse(**raw)
-    return BaseResponse(
-        data=result,
-        message=f"Seeded {result.nodes_created} nodes and {result.relationships_created} relationships",
-    )
+    return BaseResponse(data=result, message="Sample data seeded")
 
 
 @router.delete(
-    "/fixtures/{scope:path}",
+    "/fixtures/{scope}",
     response_model=BaseResponse[FixtureDeleteResponse],
-    summary="Delete all fixture nodes tagged with the given scope",
+    summary="Delete fixtures by scope tag",
 )
 async def delete_fixtures(
-    scope: Annotated[str, Path(
-        description="Scope tag used during seeding, e.g. 'fixtures:demo'",
-        min_length=1,
-        max_length=256,
-    )],
-    schema: Annotated[SchemaService, Depends(_schema)],
-    cache: Annotated[CacheService, Depends(_cache)],
-    current_user: Annotated[dict[str, Any], Depends(get_current_user)],
+    scope: str = Path(..., description="Fixture scope tag to delete"),
+    schema: Annotated[SchemaService, Depends(_schema)] = ...,  # type: ignore[assignment]
+    cache: Annotated[CacheService, Depends(_cache)] = ...,  # type: ignore[assignment]
+    current_user: Annotated[dict[str, Any], Depends(get_current_user)] = ...,  # type: ignore[assignment]
 ) -> BaseResponse[FixtureDeleteResponse]:
     raw = await schema.delete_fixtures(scope)
-    await cache.invalidate_entity("node")
-    await cache.invalidate_entity("relationship")
     await cache.invalidate_entity("schema")
     result = FixtureDeleteResponse(**raw)
-    return BaseResponse(data=result, message=f"Deleted {result.deleted} nodes with scope '{scope}'")
+    return BaseResponse(data=result, message=f"Fixtures deleted for scope '{scope}'")

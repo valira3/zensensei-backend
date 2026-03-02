@@ -106,7 +106,7 @@ async def get_user_context(
     return BaseResponse(data=ctx)
 
 
-# ─── Goal Impact ──────────────────────────────────────────────────────────────
+# ─── Goal Impact ─────────────────────────────────────────────────────────────
 
 
 @router.get(
@@ -144,7 +144,7 @@ async def get_goal_impact(
     return BaseResponse(data=impact)
 
 
-# ─── Similar Patterns ─────────────────────────────────────────────────────────
+# ─── Similar Patterns ───────────────────────────────────────────────────────────
 
 
 @router.get(
@@ -195,6 +195,7 @@ async def get_similar_patterns(
 async def get_subgraph(
     node_id: str,
     graph: Annotated[GraphService, Depends(_graph)],
+    current_user: Annotated[dict[str, Any], Depends(get_current_user)],
     depth: int = Query(2, ge=1, le=_MAX_SUBGRAPH_DEPTH, description="Traversal depth (max 5)"),
 ) -> BaseResponse[SubgraphResponse]:
     raw = await graph.get_subgraph(node_id, depth)
@@ -245,7 +246,7 @@ async def get_subgraph(
     return BaseResponse(data=result)
 
 
-# ─── Cypher (admin only) ──────────────────────────────────────────────────────
+# ─── Cypher (admin only) ───────────────────────────────────────────────────────────
 
 
 @router.post(
@@ -283,7 +284,7 @@ async def run_cypher(
     return BaseResponse(data=result)
 
 
-# ─── Shortest Path ────────────────────────────────────────────────────────────
+# ─── Shortest Path ─────────────────────────────────────────────────────────────
 
 
 @router.get(
@@ -334,7 +335,7 @@ async def get_shortest_path(
     return BaseResponse(data=result)
 
 
-# ─── Recommendations ──────────────────────────────────────────────────────────
+# ─── Recommendations ───────────────────────────────────────────────────────────
 
 
 @router.get(

@@ -1,267 +1,313 @@
 """
 ZenSensei Integration Service - Webhooks Router
 
-Receives and processes inbound webhooks from external providers.
-Handles challenge/verification requests and routes events to the sync engine.
+Receives and processes inbound webhooks from third-party platforms.
 
-Endpoints
----------
-POST /webhooks/{provider}          Receive webhook events from a provider
-POST /webhooks/verify/{provider}   Webhook verification (challenge/response)
-
-Verification strategies
------------------------
-Slack:      Verifies ``X-Slack-Signature`` HMAC-SHA256 header
-Google:     Returns the ``challenge`` field from the JSON body
-Notion:     Passes Notion-Webhook-Signature header verification
-Stripe:     Verifies ``Stripe-Signature`` header
-GitHub:     Verifies ``X-Hub-Signature-256`` HMAC-SHA256 header
-Default:    Echoes back any ``challenge`` field present in the body
+Endpoints:
+    POST /webhooks/{provider}              Receive an inbound webhook
+    GET  /webhooks/providers               List registered providers
+    GET  /webhooks/events                  List recent webhook events
+    POST /webhooks/test/{provider}         Send a test/ping to a provider
+    GET  /webhooks/events/{event_id}       Get a specific webhook event
+    POST /webhooks/replay/{event_id}       Replay a past webhook event
 """
 
 from __future__ import annotations
 
 import hashlib
 import hmac
-import json
 import logging
-from datetime import datetime, timezone
-from typing import Any
+import time
+from typing import Annotated, Any, Optional
 
-from fastapi import APIRouter, Header, HTTPException, Request, status
-from fastapi.responses import JSONResponse, PlainTextResponse
+from fastapi import APIRouter, Depends, Header, HTTPException, Path, Query, Request, status
+from fastapi.responses import ORJSONResponse
 
-from shared.config import get_config
+from shared.auth import get_current_user
+from shared.models.base import BaseResponse
 
-from integration_service.schemas import WebhookAckResponse, WebhookVerificationRequest
-from integration_service.services.sync_engine import SyncEngine, get_sync_engine
+from services.integration_service.schemas import (
+    WebhookEvent,
+    WebhookEventListResponse,
+    WebhookProvider,
+    WebhookProviderListResponse,
+    WebhookTestResponse,
+)
+from services.integration_service.services.webhook_service import (
+    WebhookService,
+    get_webhook_service,
+)
 
 logger = logging.getLogger(__name__)
-_cfg = get_config()
 
-router = APIRouter(prefix="/webhooks", tags=["Webhooks"])
+router = APIRouter(prefix="/webhooks", tags=["webhooks"])
 
+# ---------------------------------------------------------------------------
+# Supported providers and their signature-verification configs
+# ---------------------------------------------------------------------------
 
-# ─── Shared webhook secret resolver ──────────────────────────────────────────
-
-import os as _os
-
-_WEBHOOK_SECRETS: dict[str, str] = {
-    "slack": _os.environ.get("SLACK_SIGNING_SECRET", ""),
-    "stripe": _os.environ.get("STRIPE_WEBHOOK_SECRET", ""),
-    "github": _os.environ.get("GITHUB_WEBHOOK_SECRET", ""),
-    "notion": _os.environ.get("NOTION_WEBHOOK_SECRET", ""),
-    "plaid": _os.environ.get("PLAID_WEBHOOK_SECRET", ""),
+_PROVIDER_CONFIGS: dict[str, dict[str, Any]] = {
+    "github": {
+        "header": "x-hub-signature-256",
+        "prefix": "sha256=",
+        "algorithm": "sha256",
+        "secret_env": "GITHUB_WEBHOOK_SECRET",
+    },
+    "stripe": {
+        "header": "stripe-signature",
+        "prefix": "",
+        "algorithm": "sha256",
+        "secret_env": "STRIPE_WEBHOOK_SECRET",
+        "stripe_style": True,
+    },
+    "notion": {
+        "header": "x-notion-signature",
+        "prefix": "v0=",
+        "algorithm": "sha256",
+        "secret_env": "NOTION_WEBHOOK_SECRET",
+    },
+    "google": {
+        "header": "x-goog-signature",
+        "prefix": "",
+        "algorithm": "sha256",
+        "secret_env": "GOOGLE_WEBHOOK_SECRET",
+    },
 }
 
 
-# ─── Verification endpoint ────────────────────────────────────────────────────
+# ---------------------------------------------------------------------------
+# Signature verification helpers
+# ---------------------------------------------------------------------------
 
 
-@router.post(
-    "/verify/{provider}",
-    summary="Webhook verification endpoint",
-    description=(
-        "Handles provider-specific verification challenges. "
-        "Called once when registering a webhook URL with a provider."
-    ),
-)
-async def verify_webhook(
-    provider: str,
-    request: Request,
-) -> Any:
-    """
-    Handle webhook challenge/response verification for each provider.
-
-    Most providers send a one-time verification request when you register
-    a webhook URL. This endpoint responds appropriately for each provider.
-    """
-    body_bytes = await request.body()
-
-    # Google (Calendar, Gmail, etc.) — returns challenge field as-is
-    if provider.startswith("google"):
-        try:
-            body = json.loads(body_bytes)
-            challenge = body.get("challenge")
-            if challenge:
-                return JSONResponse(content={"challenge": challenge})
-        except json.JSONDecodeError:
-            pass
-        return JSONResponse(content={"status": "ok"})
-
-    # Slack URL verification
-    if provider == "slack":
-        try:
-            body = json.loads(body_bytes)
-            if body.get("type") == "url_verification":
-                return JSONResponse(content={"challenge": body["challenge"]})
-        except json.JSONDecodeError:
-            pass
-
-    # Notion webhook verification
-    if provider == "notion":
-        try:
-            body = json.loads(body_bytes)
-            if "challenge" in body:
-                return JSONResponse(content={"challenge": body["challenge"]})
-        except json.JSONDecodeError:
-            pass
-
-    # Generic: echo challenge if present
-    try:
-        body = json.loads(body_bytes)
-        if "challenge" in body:
-            return JSONResponse(content={"challenge": body["challenge"]})
-    except (json.JSONDecodeError, TypeError):
-        pass
-
-    return JSONResponse(content={"status": "verified"})
+async def _get_raw_body(request: Request) -> bytes:
+    """Read and return the raw request body (cached on the request scope)."""
+    if not hasattr(request.state, "_body"):
+        request.state._body = await request.body()
+    return request.state._body  # type: ignore[no-any-return]
 
 
-# ─── Event reception endpoint ──────────────────────────────────────────────────
-
-
-@router.post(
-    "/{provider}",
-    response_model=WebhookAckResponse,
-    status_code=status.HTTP_200_OK,
-    summary="Receive webhook event",
-    description=(
-        "Receives incoming webhook payloads from external providers. "
-        "Validates signatures where applicable, then routes the event "
-        "to the sync engine for processing."
-    ),
-)
-async def receive_webhook(
-    provider: str,
-    request: Request,
-    x_slack_signature: str | None = Header(default=None),
-    x_slack_request_timestamp: str | None = Header(default=None),
-    stripe_signature: str | None = Header(default=None),
-    x_hub_signature_256: str | None = Header(default=None),
-    x_notion_signature: str | None = Header(default=None),
-) -> WebhookAckResponse:
-    body_bytes = await request.body()
-
-    # ── Signature verification ───────────────────────────────────────────────
-    secret = _WEBHOOK_SECRETS.get(provider, "")
-
-    if provider == "slack" and secret:
-        _verify_slack_signature(body_bytes, x_slack_signature, x_slack_request_timestamp, secret)
-
-    elif provider == "stripe" and secret:
-        _verify_stripe_signature(body_bytes, stripe_signature, secret)
-
-    elif provider == "github" and secret:
-        _verify_github_signature(body_bytes, x_hub_signature_256, secret)
-
-    elif provider == "notion" and x_notion_signature and secret:
-        _verify_notion_signature(body_bytes, x_notion_signature, secret)
-
-    # ── Parse payload ────────────────────────────────────────────────────────
-    try:
-        payload = json.loads(body_bytes)
-    except json.JSONDecodeError:
-        payload = {"raw": body_bytes.decode("utf-8", errors="replace")}
-
-    # ── Dispatch to sync engine ───────────────────────────────────────────────
-    sync_engine: SyncEngine = get_sync_engine()
-    import asyncio
-    asyncio.create_task(
-        sync_engine.process_webhook(provider=provider, payload=payload)
-    )
-
-    return WebhookAckResponse(
-        provider=provider,
-        received_at=datetime.now(tz=timezone.utc),
-        status="queued",
-    )
-
-
-# ─── Signature verification helpers ─────────────────────────────────────────────
-
-
-def _verify_slack_signature(
-    body: bytes,
-    signature: str | None,
-    timestamp: str | None,
-    secret: str,
-) -> None:
-    """Verify Slack HMAC-SHA256 request signature."""
-    if not signature or not timestamp:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Missing Slack signature headers",
-        )
-    basestring = f"v0:{timestamp}:{body.decode()}"
-    computed = "v0=" + hmac.new(
-        secret.encode(), basestring.encode(), hashlib.sha256
-    ).hexdigest()
-    if not hmac.compare_digest(computed, signature):
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid Slack signature",
-        )
+def _verify_github_signature(body: bytes, secret: str, header_value: str) -> bool:
+    expected = "sha256=" + hmac.new(secret.encode(), body, hashlib.sha256).hexdigest()
+    return hmac.compare_digest(expected, header_value)
 
 
 def _verify_stripe_signature(
     body: bytes,
-    signature: str | None,
     secret: str,
+    header_value: str,
+    tolerance_seconds: int = 300,
+) -> bool:
+    """Stripe uses a timestamp + signed payload scheme."""
+    parts = {k: v for part in header_value.split(",") for k, v in [part.split("=", 1)]}
+    ts = parts.get("t", "")
+    sig = parts.get("v1", "")
+    if not ts or not sig:
+        return False
+    if abs(time.time() - int(ts)) > tolerance_seconds:
+        return False
+    signed_payload = f"{ts}.{body.decode()}"
+    expected = hmac.new(secret.encode(), signed_payload.encode(), hashlib.sha256).hexdigest()
+    return hmac.compare_digest(expected, sig)
+
+
+def _verify_generic_signature(
+    body: bytes,
+    secret: str,
+    header_value: str,
+    prefix: str,
+    algorithm: str,
+) -> bool:
+    digestmod = getattr(hashlib, algorithm, hashlib.sha256)
+    expected = prefix + hmac.new(secret.encode(), body, digestmod).hexdigest()
+    return hmac.compare_digest(expected, header_value)
+
+
+async def _verify_webhook_signature(
+    provider: str,
+    request: Request,
+    raw_body: bytes,
 ) -> None:
-    """Verify Stripe webhook signature."""
-    if not signature:
+    """
+    Enforce HMAC signature verification for the given provider.
+    Raises HTTP 401 if the signature is missing or invalid.
+    Raises HTTP 400 if the provider is unknown.
+    """
+    import os
+
+    config = _PROVIDER_CONFIGS.get(provider)
+    if config is None:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Unknown webhook provider: '{provider}'",
+        )
+
+    header_name = config["header"]
+    sig_header = request.headers.get(header_name)
+    if not sig_header:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Missing Stripe-Signature header",
+            detail=f"Missing signature header '{header_name}' for provider '{provider}'",
         )
+
+    secret = os.environ.get(config["secret_env"], "")
+    if not secret:
+        logger.warning(
+            "Webhook secret not configured for provider '%s' (env: %s)",
+            provider,
+            config["secret_env"],
+        )
+        # Fail closed: if the secret is not set, reject the request
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Webhook signature verification not configured",
+        )
+
+    if config.get("stripe_style"):
+        valid = _verify_stripe_signature(raw_body, secret, sig_header)
+    elif config["prefix"] == "sha256=":  # GitHub style
+        valid = _verify_github_signature(raw_body, secret, sig_header)
+    else:
+        valid = _verify_generic_signature(
+            raw_body, secret, sig_header, config["prefix"], config["algorithm"]
+        )
+
+    if not valid:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid webhook signature",
+        )
+
+
+# ---------------------------------------------------------------------------
+# Routes
+# ---------------------------------------------------------------------------
+
+
+def _svc() -> WebhookService:
+    return get_webhook_service()
+
+
+Svc = Annotated[WebhookService, Depends(_svc)]
+CurrentUser = Annotated[dict, Depends(get_current_user)]
+
+
+@router.post(
+    "/{provider}",
+    response_class=ORJSONResponse,
+    status_code=status.HTTP_202_ACCEPTED,
+    include_in_schema=True,
+)
+async def receive_webhook(
+    provider: str,
+    request: Request,
+    svc: Svc,
+) -> ORJSONResponse:
+    """Receive an inbound webhook from a third-party provider.
+
+    Signature verification is enforced for all registered providers.
+    The raw body is read once and cached on the request state to avoid
+    double-consumption issues with FastAPI's body parsing.
+    """
+    raw_body = await _get_raw_body(request)
+    await _verify_webhook_signature(provider, request, raw_body)
+
     try:
-        import stripe  # type: ignore
-        stripe.Webhook.construct_event(body, signature, secret)
-    except Exception as exc:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail=f"Invalid Stripe signature: {exc}",
-        )
+        payload = await request.json()
+    except Exception:
+        payload = {}
+
+    event: WebhookEvent = await svc.process_webhook(
+        provider=provider,
+        payload=payload,
+        headers=dict(request.headers),
+    )
+    return ORJSONResponse(
+        BaseResponse(data={"event_id": event.id, "queued": True}).model_dump(),
+        status_code=status.HTTP_202_ACCEPTED,
+    )
 
 
-def _verify_github_signature(
-    body: bytes,
-    signature: str | None,
-    secret: str,
-) -> None:
-    """Verify GitHub HMAC-SHA256 webhook signature."""
-    if not signature:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Missing X-Hub-Signature-256 header",
-        )
-    expected = "sha256=" + hmac.new(
-        secret.encode(), body, hashlib.sha256
-    ).hexdigest()
-    if not hmac.compare_digest(expected, signature):
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid GitHub signature",
-        )
+@router.get(
+    "/providers",
+    response_class=ORJSONResponse,
+    status_code=status.HTTP_200_OK,
+)
+async def list_providers(
+    svc: Svc,
+    current_user: CurrentUser,
+) -> ORJSONResponse:
+    """List all registered webhook providers. Requires authentication."""
+    result: WebhookProviderListResponse = await svc.list_providers()
+    return ORJSONResponse(BaseResponse(data=result.model_dump()).model_dump())
 
 
-def _verify_notion_signature(
-    body: bytes,
-    signature: str | None,
-    secret: str,
-) -> None:
-    """Verify Notion webhook signature."""
-    if not signature:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Missing Notion-Webhook-Signature header",
-        )
-    expected = "v1=" + hmac.new(
-        secret.encode(), body, hashlib.sha256
-    ).hexdigest()
-    if not hmac.compare_digest(expected, signature):
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid Notion signature",
-        )
+@router.get(
+    "/events",
+    response_class=ORJSONResponse,
+    status_code=status.HTTP_200_OK,
+)
+async def list_webhook_events(
+    svc: Svc,
+    current_user: CurrentUser,
+    limit: Optional[int] = Query(50, ge=1, le=500),
+    offset: Optional[int] = Query(0, ge=0),
+    provider: Optional[str] = Query(None),
+    status_filter: Optional[str] = Query(None, alias="status"),
+) -> ORJSONResponse:
+    """List recent webhook events. Requires authentication."""
+    result: WebhookEventListResponse = await svc.list_events(
+        limit=limit or 50,
+        offset=offset or 0,
+        provider=provider,
+        status_filter=status_filter,
+    )
+    return ORJSONResponse(BaseResponse(data=result.model_dump()).model_dump())
+
+
+@router.post(
+    "/test/{provider}",
+    response_class=ORJSONResponse,
+    status_code=status.HTTP_200_OK,
+)
+async def test_webhook(
+    provider: str,
+    svc: Svc,
+    current_user: CurrentUser,
+) -> ORJSONResponse:
+    """Send a test ping to a provider. Requires authentication."""
+    result: WebhookTestResponse = await svc.send_test_webhook(provider=provider)
+    return ORJSONResponse(BaseResponse(data=result.model_dump()).model_dump())
+
+
+@router.get(
+    "/events/{event_id}",
+    response_class=ORJSONResponse,
+    status_code=status.HTTP_200_OK,
+)
+async def get_webhook_event(
+    event_id: str,
+    svc: Svc,
+    current_user: CurrentUser,
+) -> ORJSONResponse:
+    """Get a specific webhook event by ID. Requires authentication."""
+    event: WebhookEvent = await svc.get_event(event_id=event_id)
+    return ORJSONResponse(BaseResponse(data=event.model_dump()).model_dump())
+
+
+@router.post(
+    "/replay/{event_id}",
+    response_class=ORJSONResponse,
+    status_code=status.HTTP_202_ACCEPTED,
+)
+async def replay_webhook_event(
+    event_id: str,
+    svc: Svc,
+    current_user: CurrentUser,
+) -> ORJSONResponse:
+    """Replay a past webhook event. Requires authentication."""
+    event: WebhookEvent = await svc.replay_event(event_id=event_id)
+    return ORJSONResponse(
+        BaseResponse(data={"event_id": event.id, "replayed": True}).model_dump(),
+        status_code=status.HTTP_202_ACCEPTED,
+    )

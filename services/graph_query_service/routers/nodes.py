@@ -50,7 +50,7 @@ def _cache() -> CacheService:
     return get_cache_service()
 
 
-# ─── Helpers ──────────────────────────────────────────────────────────────────
+# ─── Helpers ─────────────────────────────────────────────────────────────────
 
 
 def _raw_to_node_response(raw: dict[str, Any]) -> NodeResponse:
@@ -104,6 +104,7 @@ async def create_node(
 async def list_node_types(
     graph: Annotated[GraphService, Depends(_graph)],
     cache: Annotated[CacheService, Depends(_cache)],
+    current_user: Annotated[dict[str, Any], Depends(get_current_user)],
 ) -> BaseResponse[NodeTypeListResponse]:
     cached = await cache.get_node_types()
     if cached:
@@ -123,6 +124,7 @@ async def list_node_types(
 )
 async def search_nodes(
     graph: Annotated[GraphService, Depends(_graph)],
+    current_user: Annotated[dict[str, Any], Depends(get_current_user)],
     node_type: Optional[str] = Query(None, description="Filter by node label"),
     full_text: Optional[str] = Query(None, description="Full-text search query"),
     page: int = Query(1, ge=1, description="Page number (1-based)"),
@@ -148,6 +150,7 @@ async def search_nodes(
 async def get_node(
     node_id: str,
     graph: Annotated[GraphService, Depends(_graph)],
+    current_user: Annotated[dict[str, Any], Depends(get_current_user)],
 ) -> BaseResponse[NodeResponse]:
     raw = await graph.get_node(node_id)
     if raw is None:

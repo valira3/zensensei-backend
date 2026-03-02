@@ -45,7 +45,7 @@ def _cache() -> CacheService:
     return get_cache_service()
 
 
-# ─── Helpers ──────────────────────────────────────────────────────────────────
+# ─── Helpers ─────────────────────────────────────────────────────────────────
 
 
 def _raw_to_rel_response(raw: dict[str, Any]) -> RelationshipResponse:
@@ -106,6 +106,7 @@ async def create_relationship(
 async def get_relationship(
     rel_id: str,
     graph: Annotated[GraphService, Depends(_graph)],
+    current_user: Annotated[dict[str, Any], Depends(get_current_user)],
 ) -> BaseResponse[RelationshipResponse]:
     raw = await graph.get_relationship(rel_id)
     if raw is None:
@@ -160,6 +161,7 @@ async def delete_relationship(
 async def get_node_relationships(
     node_id: str,
     graph: Annotated[GraphService, Depends(_graph)],
+    current_user: Annotated[dict[str, Any], Depends(get_current_user)],
     direction: Literal["BOTH", "IN", "OUT"] = Query(
         default="BOTH",
         description="Relationship direction relative to the node",
