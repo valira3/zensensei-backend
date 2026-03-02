@@ -1,0 +1,51 @@
+name: Assemble index.html
+
+on:
+  push:
+    paths:
+      - 'frontend/public/_index_part*.html'
+  workflow_dispatch:
+
+jobs:
+  assemble:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - name: Check if all parts exist
+        id: check
+        run: |
+          if [ -f frontend/public/_index_part1.html ] && \
+             [ -f frontend/public/_index_part2.html ] && \
+             [ -f frontend/public/_index_part3.html ] && \
+             [ -f frontend/public/_index_part4.html ]; then
+            echo "all_parts=true" >> $GITHUB_OUTPUT
+          else
+            echo "all_parts=false" >> $GITHUB_OUTPUT
+            echo "Not all parts found, skipping assembly"
+          fi
+
+      - name: Assemble index.html from parts
+        if: steps.check.outputs.all_parts == 'true'
+        run: |
+          cat frontend/public/_index_part1.html \
+              frontend/public/_index_part2.html \
+              frontend/public/_index_part3.html \
+              frontend/public/_index_part4.html \
+              > frontend/public/index.html
+          echo "Assembled index.html: $(wc -c < frontend/public/index.html) bytes"
+
+      - name: Remove part files and commit
+        if: steps.check.outputs.all_parts == 'true'
+        run: |
+          rm frontend/public/_index_part*.html
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add frontend/public/index.html
+          git rm frontend/public/_index_part*.html 2>/dev/null || true
+          git commit -m "Assemble frontend/public/index.html from parts [skip ci]"
+          git push
