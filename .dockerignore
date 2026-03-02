@@ -1,23 +1,22 @@
-# Python
-__pycache__/
-*.py[cod]
+__pycache__
+*.pyc
 *.pyo
-.venv/
-venv/
-*.egg-info/
-dist/
-build/
-
-# Dev/test
+.git
+.github
 .env
-.env.*
-*.test.*
-tests/
-.pytest_cache/
-
-# Docs / tooling
-docs/
 *.md
-.git/
-.github/
-.DS_Store
+!requirements.txt
+!requirements-dev.txt
+terraform/
+docs/
+data/
+railway-configs/
+*.toml
+*.json
+!railway.json
+!pyproject.toml
+.pytest_cache
+.mypy_cache
+.coverage
+htmlcov/
+node_modules/

@@ -1,48 +1,255 @@
-name: Security & Dependency Audit
+name: ZenSensei Security Scanning
 
 on:
-  schedule:
-    - cron: "0 3 * * 1"
   push:
-    branches: [main]
-  workflow_dispatch:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+  schedule:
+    # Run a full security scan nightly at 02:00 UTC
+    - cron: "0 2 * * *"
+
+permissions:
+  contents: read
+  security-events: write
+  actions: read
 
 jobs:
-  dependency-audit:
-    name: Dependency Vulnerability Audit
+  # ─── Dependency vulnerability scanning ────────────────────────────────────
+  dependency-scan:
+    name: Dependency Vulnerability Scan
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - name: Set up Python 3.11
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.11"
-      - name: Install pip-audit
-        run: pip install pip-audit
-      - name: Audit shared requirements
-        run: pip-audit -r services/shared/requirements.txt
-      - name: Audit all service requirements
-        run: |
-          for req in services/*/requirements.txt; do
-            echo "--- Auditing $req ---"
-            pip-audit -r "$req" || true
-          done
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-  sast:
-    name: Static Application Security Testing
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - name: Set up Python 3.11
+      - name: Set up Python 3.12
         uses: actions/setup-python@v5
         with:
-          python-version: "3.11"
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install Safety
+        run: pip install safety pip-audit
+
+      - name: Run pip-audit (CVE check)
+        run: |
+          pip install -r requirements.txt -r requirements-dev.txt
+          pip-audit --format=json --output=pip-audit-results.json
+          pip-audit --format=markdown
+
+      - name: Run Safety check
+        run: |
+          safety check \
+            --full-report \
+            -r requirements.txt \
+            -r requirements-dev.txt \
+            --output text
+
+      - name: Upload audit results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: dependency-audit-results
+          path: pip-audit-results.json
+
+  # ─── Static Application Security Testing (SAST) ───────────────────────────
+  sast:
+    name: SAST — Bandit & Semgrep
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
       - name: Install Bandit
         run: pip install bandit[toml]
-      - name: Run Bandit (High + Medium)
-        run: bandit -r services/ -ll -f json -o bandit-report.json || true
-      - name: Upload Bandit Report
+
+      - name: Run Bandit (Python security linter)
+        run: |
+          bandit \
+            -r shared/ services/ gateway/ \
+            -f json \
+            -o bandit-results.json \
+            --severity-level medium \
+            --confidence-level medium || true
+          bandit \
+            -r shared/ services/ gateway/ \
+            --severity-level medium \
+            --confidence-level medium
+
+      - name: Upload Bandit results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: bandit-results
+          path: bandit-results.json
+
+      - name: Run Semgrep
+        uses: semgrep/semgrep-action@v1
+        with:
+          config: >-
+            p/python
+            p/secrets
+            p/jwt
+            p/sql-injection
+            p/owasp-top-ten
+        env:
+          SEMGREP_APP_TOKEN: ${{ secrets.SEMGREP_APP_TOKEN }}
+
+  # ─── Container image scanning ──────────────────────────────────────────────
+  container-scan:
+    name: Container Image Scan (Trivy)
+    runs-on: ubuntu-latest
+    if: github.event_name != 'pull_request'
+    strategy:
+      matrix:
+        service:
+          - user-service
+          - graph-query-service
+          - ai-reasoning-service
+          - integration-service
+          - notification-service
+          - analytics-service
+          - gateway
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Determine Dockerfile path
+        id: dockerfile
+        run: |
+          SERVICE="${{ matrix.service }}"
+          SERVICE_DIR=$(echo "$SERVICE" | tr '-' '_')
+          if [ "$SERVICE" = "gateway" ]; then
+            echo "path=services/api_gateway/Dockerfile" >> "$GITHUB_OUTPUT"
+          else
+            echo "path=services/${SERVICE_DIR}/Dockerfile" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Build image for scanning
+        run: |
+          docker build \
+            -t zensensei/${{ matrix.service }}:scan \
+            -f ${{ steps.dockerfile.outputs.path }} \
+            .
+
+      - name: Run Trivy vulnerability scanner
+        uses: aquasecurity/trivy-action@0.20.0
+        with:
+          image-ref: zensensei/${{ matrix.service }}:scan
+          format: sarif
+          output: trivy-${{ matrix.service }}.sarif
+          severity: CRITICAL,HIGH
+          ignore-unfixed: true
+          exit-code: "1"
+
+      - name: Upload Trivy scan results to GitHub Security tab
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: trivy-${{ matrix.service }}.sarif
+          category: trivy-${{ matrix.service }}
+
+  # ─── Secret scanning ───────────────────────────────────────────────────────
+  secret-scan:
+    name: Secret Detection (Gitleaks)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Full history for secret scanning
+
+      - name: Run Gitleaks
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITLEAKS_ENABLE_COMMENTS: true
+
+  # ─── Infrastructure as Code scanning ──────────────────────────────────────
+  iac-scan:
+    name: IaC Security Scan (Checkov)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Run Checkov on Terraform configs
+        uses: bridgecrewio/checkov-action@master
+        with:
+          directory: terraform/
+          framework: terraform
+          output_format: sarif
+          output_file_path: checkov-results.sarif
+          soft_fail: true
+
+      - name: Upload Checkov results to GitHub Security tab
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: checkov-results.sarif
+          category: checkov-terraform
+
+  # ─── CodeQL Analysis ───────────────────────────────────────────────────────
+  codeql:
+    name: CodeQL Analysis
+    runs-on: ubuntu-latest
+    permissions:
+      actions: read
+      contents: read
+      security-events: write
+    strategy:
+      fail-fast: false
+      matrix:
+        language: [python]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v3
+        with:
+          languages: ${{ matrix.language }}
+          queries: security-extended,security-and-quality
+
+      - name: Autobuild
+        uses: github/codeql-action/autobuild@v3
+
+      - name: Perform CodeQL analysis
+        uses: github/codeql-action/analyze@v3
+        with:
+          category: /language:${{ matrix.language }}
+
+  # ─── SBOM generation ───────────────────────────────────────────────────────
+  sbom:
+    name: Generate SBOM
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install CycloneDX SBOM generator
+        run: pip install cyclonedx-bom
+
+      - name: Generate SBOM
+        run: |
+          pip install -r requirements.txt
+          cyclonedx-py requirements requirements.txt -o sbom.json --format json
+
+      - name: Upload SBOM artifact
         uses: actions/upload-artifact@v4
         with:
-          name: bandit-report
-          path: bandit-report.json
+          name: sbom
+          path: sbom.json
+          retention-days: 90
