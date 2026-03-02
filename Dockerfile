@@ -1,30 +1,48 @@
-# ─── Root Dockerfile ──────────────────────────────────────────────────────────
+# ─── Root Dockerfile ─────────────────────────────────────────────────────────
 # Default service: API Gateway
 # Railway uses this when no dockerfilePath is specified.
 # For individual microservice Dockerfiles, see:
 #   gateway/Dockerfile, services/*/Dockerfile, frontend/Dockerfile
-# ──────────────────────────────────────────────────────────────────────────────
+# ─────────────────────────────────────────────────────────────────────────────
 
 FROM python:3.12-slim
 
-# ── System deps ───────────────────────────────────────────────────────────────
+# ── System deps ───────────────────────────────────────────────────────────
 RUN apt-get update && apt-get install -y --no-install-recommends \
         curl \
     && rm -rf /var/lib/apt/lists/*
 
-# ── Working directory ─────────────────────────────────────────────────────────
+# ── Working directory ──────────────────────────────────────────────────────
 WORKDIR /app
 
-# ── Python deps ───────────────────────────────────────────────────────────────
-COPY gateway/requirements.txt ./requirements.txt
+# ── Install Python dependencies ────────────────────────────────────────────
+COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# ── Application code ──────────────────────────────────────────────────────────
-COPY gateway/ ./
+# ── Copy shared library and gateway source ─────────────────────────────────
+COPY shared/ ./shared/
+COPY gateway/ ./gateway/
 
-# ── Runtime ───────────────────────────────────────────────────────────────────
-EXPOSE 8000
-HEALTHCHECK --interval=30s --timeout=10s --start-period=15s --retries=3 \
-    CMD curl -f http://localhost:8000/health || exit 1
+# ── Python path ────────────────────────────────────────────────────────────
+ENV PYTHONPATH="/app"
 
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
+# ── Non-root user ──────────────────────────────────────────────────────────
+RUN addgroup --system appgroup && adduser --system --ingroup appgroup appuser
+USER appuser
+
+# ── Default port (Railway overrides via $PORT) ─────────────────────────────
+ENV PORT=4000
+
+EXPOSE 4000
+
+# ── Health check ───────────────────────────────────────────────────────────
+HEALTHCHECK --interval=15s --timeout=10s --retries=3 --start-period=20s \
+    CMD curl -f http://localhost:${PORT}/health || exit 1
+
+# ── Start ──────────────────────────────────────────────────────────────────
+CMD ["sh", "-c", \
+     "python -m uvicorn gateway.main:app \
+          --host 0.0.0.0 \
+          --port ${PORT:-4000} \
+          --workers ${WEB_CONCURRENCY:-2} \
+          --log-level info"]
