@@ -1,155 +1,134 @@
 """
 ZenSensei User Service - Users Router
 
-Handles user profile management:
-  GET    /users/me           Get current user profile
-  PATCH  /users/me           Update profile fields
-  DELETE /users/me           Soft-delete (deactivate) account
-  GET    /users/{user_id}    Admin: fetch any user by ID
+Endpoints:
+  GET    /users/me           - Get authenticated user's profile
+  PUT    /users/me           - Update authenticated user's profile
+  DELETE /users/me           - Delete authenticated user's account
+  GET    /users/{user_id}    - Get another user's public profile (admin or self)
+  PUT    /users/{user_id}/subscription - Update subscription tier (admin)
 """
 
 from __future__ import annotations
 
-import sys
-import os
-
-_shared_path = os.path.abspath(
-    os.path.join(os.path.dirname(__file__), "..", "..", "..", "..")
-)
-if _shared_path not in sys.path:
-    sys.path.insert(0, _shared_path)
-
+import logging
 from typing import Any
 
-import structlog
-from fastapi import APIRouter, Depends, Path, status
+from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.responses import ORJSONResponse
 
-from shared.auth import get_current_active_user, require_roles
-from shared.models.base import BaseResponse
-from shared.models.user import UserResponse
+from shared.auth import get_current_active_user
 
-from services.user_service.schemas import UpdateProfileRequest
-from services.user_service.services.user_service import (
-    _get_user_or_404,
-    deactivate_user,
-    get_user_by_id,
-    update_user_profile,
+from services.user_service.schemas import (
+    UpdateUserRequest,
+    UpdateSubscriptionRequest,
 )
+import services.user_service.services.user_service as user_svc
 
-logger = structlog.get_logger(__name__)
+logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/users", tags=["Users"])
+router = APIRouter(prefix="/users", tags=["users"])
 
 
-# ─── Get current user profile ────────────────────────────────────────────────
+# ─── /me endpoints ───────────────────────────────────────────────────────────
 
 
 @router.get(
     "/me",
-    response_model=BaseResponse[UserResponse],
-    summary="Get the current user's profile",
+    summary="Get authenticated user's profile",
     response_class=ORJSONResponse,
 )
-async def get_my_profile(
+async def get_me(
     current_user: dict[str, Any] = Depends(get_current_active_user),
-) -> dict[str, Any]:
-    """
-    Return the full profile for the currently authenticated user.
-
-    This endpoint duplicates ``GET /auth/me`` for semantic clarity—use
-    whichever fits your client's mental model.
-    """
-    user_id: str = current_user["sub"]
-    user = await get_user_by_id(user_id)
-    return {
-        "success": True,
-        "message": "OK",
-        "data": user.model_dump(),
-    }
+) -> ORJSONResponse:
+    """Return the full profile of the currently authenticated user."""
+    user_id = current_user.get("sub", current_user.get("user_id", current_user.get("id")))
+    user = await user_svc.get_user(user_id)
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="User not found"
+        )
+    return ORJSONResponse({"success": True, "data": user})
 
 
-# ─── Update profile ────────────────────────────────────────────────────────────
-
-
-@router.patch(
+@router.put(
     "/me",
-    response_model=BaseResponse[UserResponse],
-    summary="Update profile fields",
+    summary="Update authenticated user's profile",
     response_class=ORJSONResponse,
 )
-async def update_my_profile(
-    request: UpdateProfileRequest,
+async def update_me(
+    payload: UpdateUserRequest,
     current_user: dict[str, Any] = Depends(get_current_active_user),
-) -> dict[str, Any]:
-    """
-    Apply a partial update to the current user's profile.
-
-    Only the fields provided in the request body are updated;
-    omitted fields retain their current values.
-    """
-    user_id: str = current_user["sub"]
-    await _get_user_or_404(user_id)  # Ensures user exists before patching
-
-    updated = await update_user_profile(user_id, request)
-    logger.info("Profile updated", user_id=user_id)
-    return {
-        "success": True,
-        "message": "Profile updated.",
-        "data": updated.model_dump(),
-    }
-
-
-# ─── Deactivate account ─────────────────────────────────────────────────────────
+) -> ORJSONResponse:
+    """Update the profile fields of the currently authenticated user."""
+    user_id = current_user.get("sub", current_user.get("user_id", current_user.get("id")))
+    updated = await user_svc.update_user(
+        user_id=user_id,
+        updates=payload.model_dump(exclude_unset=True),
+    )
+    return ORJSONResponse({"success": True, "data": updated})
 
 
 @router.delete(
     "/me",
-    response_model=BaseResponse[None],
-    summary="Deactivate (soft-delete) the current user account",
-    status_code=status.HTTP_200_OK,
+    summary="Delete the authenticated user's account",
     response_class=ORJSONResponse,
 )
-async def deactivate_my_account(
+async def delete_me(
     current_user: dict[str, Any] = Depends(get_current_active_user),
-) -> dict[str, Any]:
-    """
-    Soft-delete the authenticated user's account.
-
-    Sets ``is_active = False`` on the user record.  The account can be
-    reactivated by an admin; personal data is not immediately purged.
-    """
-    user_id: str = current_user["sub"]
-    await deactivate_user(user_id)
-    logger.info("Account deactivated", user_id=user_id)
-    return {
-        "success": True,
-        "message": "Account deactivated. Contact support to reactivate.",
-        "data": None,
-    }
+) -> ORJSONResponse:
+    """Permanently delete the authenticated user's account and all associated data."""
+    user_id = current_user.get("sub", current_user.get("user_id", current_user.get("id")))
+    await user_svc.delete_user(user_id)
+    return ORJSONResponse({"success": True, "message": "Account deleted successfully"})
 
 
-# ─── Admin: fetch user by ID ─────────────────────────────────────────────────
+# ─── /users/{user_id} endpoints ───────────────────────────────────────────────
 
 
 @router.get(
     "/{user_id}",
-    response_model=BaseResponse[UserResponse],
-    summary="Admin: fetch any user by ID",
+    summary="Get a user's profile (self or admin)",
     response_class=ORJSONResponse,
-    dependencies=[Depends(require_roles(["admin"]))],
 )
-async def admin_get_user(
-    user_id: str = Path(..., description="UUID of the user to fetch"),
-) -> dict[str, Any]:
-    """
-    Retrieve any user's profile by ID.
+async def get_user(
+    user_id: str,
+    current_user: dict[str, Any] = Depends(get_current_active_user),
+) -> ORJSONResponse:
+    """Return the profile for *user_id*. Only the owner or an admin may access it."""
+    caller_id = current_user.get("sub", current_user.get("user_id", current_user.get("id")))
+    is_admin = current_user.get("role") == "admin"
+    if caller_id != user_id and not is_admin:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Access denied",
+        )
+    user = await user_svc.get_user(user_id)
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="User not found"
+        )
+    return ORJSONResponse({"success": True, "data": user})
 
-    Restricted to users with the ``admin`` role.
-    """
-    user = await get_user_by_id(user_id)
-    return {
-        "success": True,
-        "message": "OK",
-        "data": user.model_dump(),
-    }
+
+@router.put(
+    "/{user_id}/subscription",
+    summary="Update a user's subscription tier (admin only)",
+    response_class=ORJSONResponse,
+)
+async def update_subscription(
+    user_id: str,
+    payload: UpdateSubscriptionRequest,
+    current_user: dict[str, Any] = Depends(get_current_active_user),
+) -> ORJSONResponse:
+    """Update the subscription tier for *user_id*. Requires admin role."""
+    if current_user.get("role") != "admin":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Admin access required",
+        )
+    updated = await user_svc.update_subscription(
+        user_id=user_id,
+        tier=payload.tier,
+    )
+    return ORJSONResponse({"success": True, "data": updated})

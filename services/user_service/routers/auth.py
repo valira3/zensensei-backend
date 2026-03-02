@@ -1,247 +1,201 @@
 """
 ZenSensei User Service - Auth Router
 
-Handles:
-  POST /auth/register       Create new user account
-  POST /auth/login          Authenticate with email/password
-  POST /auth/refresh        Exchange refresh token for new access token
-  POST /auth/logout         Invalidate a refresh token
-  POST /auth/forgot-password  Initiate password reset flow
-  POST /auth/reset-password   Complete password reset with token
-  GET  /auth/me             Return the currently authenticated user
+Endpoints:
+  POST /auth/register           - Create a new user account
+  POST /auth/login              - Exchange credentials for tokens
+  POST /auth/refresh            - Rotate access/refresh token pair
+  POST /auth/logout             - Revoke the current refresh token
+  POST /auth/verify-email       - Mark email as verified via OTP
+  POST /auth/resend-verification - Re-send email verification OTP
+  POST /auth/forgot-password    - Send password-reset OTP
+  POST /auth/reset-password     - Apply new password via OTP
+  POST /auth/change-password    - Change password (authenticated)
 """
 
 from __future__ import annotations
 
-import sys
-import os
-
-_shared_path = os.path.abspath(
-    os.path.join(os.path.dirname(__file__), "..", "..", "..", "..")
-)
-if _shared_path not in sys.path:
-    sys.path.insert(0, _shared_path)
-
+import logging
 from typing import Any
 
-import structlog
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.responses import ORJSONResponse
 
 from shared.auth import get_current_active_user
-from shared.models.base import BaseResponse
-from shared.models.user import UserResponse
 
 from services.user_service.schemas import (
+    ChangePasswordRequest,
+    EmailVerificationRequest,
     ForgotPasswordRequest,
     LoginRequest,
-    LoginResponse,
-    LogoutRequest,
     RefreshRequest,
-    RefreshResponse,
     RegisterRequest,
-    RegisterResponse,
+    ResendVerificationRequest,
     ResetPasswordRequest,
+    TokenResponse,
 )
-from services.user_service.services import auth_service as auth_svc
-from services.user_service.services.auth_service import (
-    _firestore_get_user_by_id,
-    _user_record_to_response,
-)
+import services.user_service.services.auth_service as auth_svc
 
-logger = structlog.get_logger(__name__)
+logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/auth", tags=["Authentication"])
+router = APIRouter(prefix="/auth", tags=["auth"])
 
 
-# ─── Register ─────────────────────────────────────────────────────────────────
+# ─── Register ────────────────────────────────────────────────────────────────
 
 
 @router.post(
     "/register",
-    response_model=BaseResponse[RegisterResponse],
-    status_code=status.HTTP_201_CREATED,
     summary="Register a new user account",
     response_class=ORJSONResponse,
+    status_code=status.HTTP_201_CREATED,
 )
-async def register(request: RegisterRequest) -> dict[str, Any]:
-    """
-    Create a new ZenSensei user account.
-
-    - Validates password strength (min 12 chars, upper, lower, digit, symbol).
-    - Hashes the password with bcrypt.
-    - Stores the user record in Firestore.
-    - Creates a ``Person`` node in the Neo4j knowledge graph.
-    - Returns a JWT access + refresh token pair and the new user profile.
-    """
-    logger.info("Registration attempt", email=request.email)
-    result = await auth_svc.register_user(request)
-    return {
-        "success": True,
-        "message": "Account created successfully.",
-        "data": result.model_dump(),
-    }
+async def register(
+    payload: RegisterRequest,
+    request: Request,
+) -> ORJSONResponse:
+    """Create a new user account and send an email-verification OTP."""
+    user = await auth_svc.register_user(
+        email=payload.email,
+        password=payload.password,
+        display_name=payload.display_name,
+        life_stage=payload.life_stage,
+    )
+    return ORJSONResponse(
+        {"success": True, "data": user},
+        status_code=status.HTTP_201_CREATED,
+    )
 
 
-# ─── Login ────────────────────────────────────────────────────────────────────
+# ─── Login ─────────────────────────────────────────────────────────────────
 
 
 @router.post(
     "/login",
-    response_model=BaseResponse[LoginResponse],
-    summary="Authenticate with email and password",
+    summary="Login and get access + refresh tokens",
     response_class=ORJSONResponse,
 )
-async def login(request: LoginRequest) -> dict[str, Any]:
-    """
-    Authenticate a user with email and password.
-
-    - Enforces per-email rate limiting (max 5 attempts / 15-minute window).
-    - Returns a JWT access + refresh token pair on success.
-    """
-    logger.info("Login attempt", email=request.email)
-    result = await auth_svc.authenticate_user(request)
-    return {
-        "success": True,
-        "message": "Login successful.",
-        "data": result.model_dump(),
-    }
+async def login(
+    payload: LoginRequest,
+    request: Request,
+) -> ORJSONResponse:
+    """Authenticate with email/password and receive a token pair."""
+    tokens = await auth_svc.login_user(
+        email=payload.email,
+        password=payload.password,
+    )
+    return ORJSONResponse({"success": True, "data": tokens})
 
 
-# ─── Refresh Token ────────────────────────────────────────────────────────────
+# ─── Refresh ─────────────────────────────────────────────────────────────────
 
 
 @router.post(
     "/refresh",
-    response_model=BaseResponse[RefreshResponse],
-    summary="Exchange a refresh token for a new access token",
+    summary="Rotate access and refresh tokens",
     response_class=ORJSONResponse,
 )
-async def refresh(request: RefreshRequest) -> dict[str, Any]:
-    """
-    Issue a new access token using a valid refresh token.
-
-    The refresh token is validated and must not be blacklisted.
-    """
-    result = await auth_svc.refresh_tokens(request.refresh_token)
-    return {
-        "success": True,
-        "message": "Token refreshed.",
-        "data": result.model_dump(),
-    }
+async def refresh_tokens(
+    payload: RefreshRequest,
+) -> ORJSONResponse:
+    """Rotate the token pair using a valid refresh token."""
+    tokens = await auth_svc.refresh_tokens(payload.refresh_token)
+    return ORJSONResponse({"success": True, "data": tokens})
 
 
-# ─── Logout ───────────────────────────────────────────────────────────────────
+# ─── Logout ─────────────────────────────────────────────────────────────────
 
 
 @router.post(
     "/logout",
-    response_model=BaseResponse[None],
-    summary="Invalidate a refresh token",
+    summary="Logout (revoke refresh token)",
     response_class=ORJSONResponse,
 )
 async def logout(
-    request: LogoutRequest,
-    _current_user: dict[str, Any] = Depends(get_current_active_user),
-) -> dict[str, Any]:
-    """
-    Invalidate the provided refresh token.
-
-    The access token will remain valid until its natural expiry —
-    front-ends should discard it immediately after calling this endpoint.
-    """
-    await auth_svc.logout_user(request.refresh_token)
-    return {
-        "success": True,
-        "message": "Logged out successfully.",
-        "data": None,
-    }
+    payload: RefreshRequest,
+    current_user: dict[str, Any] = Depends(get_current_active_user),
+) -> ORJSONResponse:
+    """Revoke the provided refresh token, invalidating the session."""
+    await auth_svc.logout_user(payload.refresh_token)
+    return ORJSONResponse({"success": True, "message": "Logged out successfully"})
 
 
-# ─── Forgot Password ──────────────────────────────────────────────────────────
+# ─── Email verification ──────────────────────────────────────────────────────
+
+
+@router.post(
+    "/verify-email",
+    summary="Verify email address using OTP",
+    response_class=ORJSONResponse,
+)
+async def verify_email(
+    payload: EmailVerificationRequest,
+) -> ORJSONResponse:
+    """Mark the user's email as verified using the OTP sent on registration."""
+    await auth_svc.verify_email(payload.email, payload.otp)
+    return ORJSONResponse({"success": True, "message": "Email verified successfully"})
+
+
+@router.post(
+    "/resend-verification",
+    summary="Resend email verification OTP",
+    response_class=ORJSONResponse,
+)
+async def resend_verification(
+    payload: ResendVerificationRequest,
+) -> ORJSONResponse:
+    """Re-send the email verification OTP to the specified address."""
+    await auth_svc.resend_verification_email(payload.email)
+    return ORJSONResponse(
+        {"success": True, "message": "Verification email sent if account exists"}
+    )
+
+
+# ─── Password management ─────────────────────────────────────────────────────
 
 
 @router.post(
     "/forgot-password",
-    response_model=BaseResponse[None],
-    summary="Initiate a password reset flow",
+    summary="Request password reset OTP",
     response_class=ORJSONResponse,
 )
-async def forgot_password(request: ForgotPasswordRequest) -> dict[str, Any]:
-    """
-    Send a password reset email to the provided address.
-
-    Returns 200 regardless of whether the email exists to prevent
-    user enumeration attacks.
-    """
-    await auth_svc.initiate_password_reset(request.email)
-    return {
-        "success": True,
-        "message": (
-            "If an account with that email exists, "
-            "a password reset link has been sent."
-        ),
-        "data": None,
-    }
-
-
-# ─── Reset Password ───────────────────────────────────────────────────────────
+async def forgot_password(
+    payload: ForgotPasswordRequest,
+) -> ORJSONResponse:
+    """Send a password-reset OTP to the given email address."""
+    await auth_svc.send_password_reset(payload.email)
+    return ORJSONResponse(
+        {"success": True, "message": "Password reset email sent if account exists"}
+    )
 
 
 @router.post(
     "/reset-password",
-    response_model=BaseResponse[None],
-    summary="Complete password reset with a valid token",
+    summary="Reset password using OTP",
     response_class=ORJSONResponse,
 )
-async def reset_password(request: ResetPasswordRequest) -> dict[str, Any]:
-    """
-    Reset the user's password using the token delivered by email.
-
-    The token is single-use and expires after 1 hour.
-    """
-    await auth_svc.reset_password(request.token, request.new_password)
-    return {
-        "success": True,
-        "message": "Password reset successfully. You can now log in with your new password.",
-        "data": None,
-    }
+async def reset_password(
+    payload: ResetPasswordRequest,
+) -> ORJSONResponse:
+    """Apply a new password using the OTP received via email."""
+    await auth_svc.reset_password(payload.email, payload.otp, payload.new_password)
+    return ORJSONResponse({"success": True, "message": "Password reset successfully"})
 
 
-# ─── Get Current User ─────────────────────────────────────────────────────────
-
-
-@router.get(
-    "/me",
-    response_model=BaseResponse[UserResponse],
-    summary="Get the currently authenticated user",
+@router.post(
+    "/change-password",
+    summary="Change password (authenticated)",
     response_class=ORJSONResponse,
 )
-async def get_me(
+async def change_password(
+    payload: ChangePasswordRequest,
     current_user: dict[str, Any] = Depends(get_current_active_user),
-) -> dict[str, Any]:
-    """
-    Return the full profile of the currently authenticated user.
-
-    Requires a valid ``Authorization: Bearer <access_token>`` header.
-    """
-    user_id: str = current_user["sub"]
-    user_record = await _firestore_get_user_by_id(user_id)
-
-    if not user_record:
-        # Token is valid but user was deleted — soft 404 with auth context
-        from fastapi import HTTPException
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail={
-                "error_code": "USER_NOT_FOUND",
-                "message": "Authenticated user profile not found.",
-            },
-        )
-
-    user_response = _user_record_to_response(user_record)
-    return {
-        "success": True,
-        "message": "OK",
-        "data": user_response.model_dump(),
-    }
+) -> ORJSONResponse:
+    """Change the authenticated user's password."""
+    user_id = current_user.get("sub", current_user.get("user_id", current_user.get("id")))
+    await auth_svc.change_password(
+        user_id=user_id,
+        current_password=payload.current_password,
+        new_password=payload.new_password,
+    )
+    return ORJSONResponse({"success": True, "message": "Password changed successfully"})

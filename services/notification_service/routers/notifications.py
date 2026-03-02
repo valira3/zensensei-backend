@@ -64,6 +64,8 @@ async def list_notifications(
     Supports filtering by notification type and read status.
     Results are sorted newest-first.
     """
+    if user_id != current_user.get("sub", current_user.get("user_id", current_user.get("id"))):
+        raise HTTPException(status_code=403, detail="Access denied")
     result = await notif_svc.get_notifications(
         user_id=user_id,
         notification_type=notification_type,
@@ -95,6 +97,8 @@ async def unread_count(
     current_user: dict[str, Any] = Depends(get_current_active_user),
 ) -> ORJSONResponse:
     """Return the number of unread notifications for *user_id*."""
+    if user_id != current_user.get("sub", current_user.get("user_id", current_user.get("id"))):
+        raise HTTPException(status_code=403, detail="Access denied")
     count = await notif_svc.get_unread_count(user_id)
     return ORJSONResponse({"user_id": user_id, "unread_count": count})
 
@@ -139,6 +143,8 @@ async def mark_all_read(
     current_user: dict[str, Any] = Depends(get_current_active_user),
 ) -> ORJSONResponse:
     """Mark every unread notification for *user_id* as read."""
+    if user_id != current_user.get("sub", current_user.get("user_id", current_user.get("id"))):
+        raise HTTPException(status_code=403, detail="Access denied")
     updated = await notif_svc.mark_all_read(user_id)
     return ORJSONResponse(
         {
@@ -170,75 +176,43 @@ async def delete_notification(
     return ORJSONResponse(
         {
             "success": True,
-            "data": DeleteNotificationResponse(notification_id=notification_id).model_dump(),
+            "data": DeleteNotificationResponse(
+                notification_id=notification_id, deleted=True
+            ).model_dump(),
         }
     )
 
 
-# ─── Send notification (internal API) ────────────────────────────────────────
+# ─── Send notification (internal) ───────────────────────────────────────────
 
 
 @router.post(
     "/send",
-    summary="Send a notification to a user (internal API)",
-    status_code=status.HTTP_201_CREATED,
+    summary="Send a notification (internal use)",
     response_class=ORJSONResponse,
+    status_code=status.HTTP_201_CREATED,
 )
 async def send_notification(
-    request: NotificationSendRequest,
+    payload: NotificationSendRequest,
     current_user: dict[str, Any] = Depends(get_current_active_user),
 ) -> ORJSONResponse:
     """
-    Dispatch a notification to a single user.
+    Send a notification to a single user.
 
-    If *template_id* is provided the title and body are rendered from that
-    template using *template_variables*, overriding any supplied title/body.
-
-    Respects user preferences and quiet hours unless the notification type is
-    SYSTEM (system notifications bypass quiet hours).
+    This endpoint is intended for internal service-to-service calls.
     """
-    title = request.title
-    body = request.body
-
-    # Render from template if provided
-    if request.template_id:
-        from services.notification_service.services.template_engine import render_template
-        for channel in request.channels:
-            rendered = render_template(
-                request.template_id, channel, request.template_variables
-            )
-            if rendered:
-                title, body = rendered
-                break
-
     record = await notif_svc.send_notification(
-        user_id=request.user_id,
-        notification_type=request.notification_type,
-        channels=request.channels,
-        title=title,
-        body=body,
-        action_url=request.action_url,
-        data=request.data,
-        skip_preference_check=(request.notification_type == NotificationType.SYSTEM),
+        user_id=payload.user_id,
+        notification_type=payload.notification_type,
+        title=payload.title,
+        message=payload.message,
+        data=payload.data,
+        channels=payload.channels,
+        priority=payload.priority,
     )
-
-    if record is None:
-        return ORJSONResponse(
-            status_code=status.HTTP_200_OK,
-            content={
-                "success": True,
-                "message": "Notification suppressed by user preferences",
-                "data": None,
-            },
-        )
-
     return ORJSONResponse(
+        {"success": True, "data": _serialize_record(record)},
         status_code=status.HTTP_201_CREATED,
-        content={
-            "success": True,
-            "message": "Notification sent",
-            "data": _serialize_record(record),
-        },
     )
 
 
@@ -248,71 +222,44 @@ async def send_notification(
 @router.post(
     "/broadcast",
     summary="Broadcast a notification to multiple users",
-    status_code=status.HTTP_202_ACCEPTED,
     response_class=ORJSONResponse,
+    status_code=status.HTTP_201_CREATED,
 )
 async def broadcast_notification(
-    request: BroadcastRequest,
+    payload: BroadcastRequest,
     current_user: dict[str, Any] = Depends(get_current_active_user),
 ) -> ORJSONResponse:
-    """
-    Send the same notification to a list of users.
-
-    Returns a summary of queued and failed deliveries.
-    """
-    title = request.title
-    body = request.body
-
-    if request.template_id:
-        from services.notification_service.services.template_engine import render_template
-        for channel in request.channels:
-            rendered = render_template(
-                request.template_id, channel, request.template_variables
-            )
-            if rendered:
-                title, body = rendered
-                break
-
-    result = await notif_svc.batch_send(
-        user_ids=request.user_ids,
-        notification_type=request.notification_type,
-        channels=request.channels,
-        title=title,
-        body=body,
-        action_url=request.action_url,
-        data=request.data,
+    """Send the same notification to all user IDs in *user_ids*."""
+    records = await notif_svc.broadcast_notification(
+        user_ids=payload.user_ids,
+        notification_type=payload.notification_type,
+        title=payload.title,
+        message=payload.message,
+        data=payload.data,
+        channels=payload.channels,
+        priority=payload.priority,
     )
-
     return ORJSONResponse(
-        status_code=status.HTTP_202_ACCEPTED,
-        content={
+        {
             "success": True,
-            "message": f"Broadcast accepted for {result['total_users']} users",
-            "data": BroadcastResponse(**result).model_dump(),
+            "data": BroadcastResponse(
+                sent_count=len(records),
+                records=[_serialize_record(r) for r in records],
+            ).model_dump(),
         },
+        status_code=status.HTTP_201_CREATED,
     )
 
 
-# ─── Serialisation helpers ────────────────────────────────────────────────────
+# ─── Serialization helpers ────────────────────────────────────────────────────
 
 
-def _serialize_record(record: dict[str, Any]) -> dict[str, Any]:
-    """Convert a notification record dict to a JSON-safe dict."""
-    from datetime import datetime
-    result = dict(record)
-    for key in ("created_at", "updated_at", "read_at", "delivered_at", "scheduled_at"):
-        val = result.get(key)
-        if isinstance(val, datetime):
-            result[key] = val.isoformat()
-    # Ensure enum values are serialised as strings
-    if hasattr(result.get("notification_type"), "value"):
-        result["notification_type"] = result["notification_type"].value
-    channels = result.get("channels", [])
-    result["channels"] = [
-        c.value if hasattr(c, "value") else c for c in channels
-    ]
-    return result
+def _serialize_record(record: Any) -> dict[str, Any]:
+    """Convert a notification record (dict or Pydantic model) to a plain dict."""
+    if hasattr(record, "model_dump"):
+        return record.model_dump()
+    return dict(record)
 
 
-def _serialize_list(records: list[dict[str, Any]]) -> list[dict[str, Any]]:
-    return [_serialize_record(r) for r in records]
+def _serialize_list(items: list[Any]) -> list[dict[str, Any]]:
+    return [_serialize_record(item) for item in items]

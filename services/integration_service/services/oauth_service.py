@@ -1,109 +1,145 @@
 """
 ZenSensei Integration Service - OAuth Service
 
-Manages OAuth 2.0 flows, token exchange, storage, and refresh for all
-67 registered integrations. Uses Firestore as the token store.
+Manages the full OAuth lifecycle:
+  - Generating provider authorization URLs with CSRF state tokens
+  - Exchanging authorization codes for access/refresh tokens
+  - Refreshing expired access tokens automatically
+  - Storing and retrieving encrypted tokens in Firestore
+  - Revoking and deleting tokens on disconnect
 
-Key responsibilities
---------------------
-- Generate provider-specific authorization URLs with CSRF state tokens
-- Exchange authorization codes for access + refresh tokens
-- Persist tokens in Firestore under ``users/{uid}/integrations/{id}``
-- Refresh expired tokens automatically
-- Revoke tokens on disconnect
+Firestore collections
+---------------------
+``integration_tokens/{user_id}/providers/{integration_id}``
+  Stores the encrypted token dict + metadata per user/provider combination.
+
+``oauth_states/{state}``
+  Short-lived CSRF state documents (TTL 10 min) linking state token
+  to user_id + redirect_uri + integration_id.
 """
 
 from __future__ import annotations
 
+import hashlib
+import hmac
+import json
 import logging
+import os
 import secrets
+import uuid
 from datetime import datetime, timedelta, timezone
-from functools import lru_cache
-from typing import Any
+from typing import Any, Optional
 
-import httpx
+from cryptography.fernet import Fernet, InvalidToken
 
-from shared.config import get_config
-from shared.database.firestore import get_firestore_client
+from shared.config import ZenSenseiConfig, get_config
+from shared.database.firestore import FirestoreClient, get_firestore_client
 from shared.models.integrations import IntegrationStatus
 
-from integration_service.integrations import registry
-
 logger = logging.getLogger(__name__)
-_cfg = get_config()
 
-# Firestore collection paths
-_USERS_COL = "users"
-_INTEGRATIONS_SUB = "integrations"
-_OAUTH_STATES_COL = "oauth_states"
+# ─── Provider integration map ─────────────────────────────────────────────────
+# Lazy import to avoid circular deps; populated on first use.
+_PROVIDER_MAP: dict[str, Any] | None = None
+
+
+def _get_provider_instance(integration_id: str) -> Any:
+    """Lazy-load and cache provider integration instances."""
+    global _PROVIDER_MAP
+    if _PROVIDER_MAP is None:
+        from integration_service.integrations.google_calendar import GoogleCalendarIntegration
+        from integration_service.integrations.gmail import GmailIntegration
+        from integration_service.integrations.plaid import PlaidIntegration
+        from integration_service.integrations.spotify import SpotifyIntegration
+        from integration_service.integrations.notion import NotionIntegration
+
+        _PROVIDER_MAP = {
+            "google_calendar": GoogleCalendarIntegration(),
+            "gmail": GmailIntegration(),
+            "plaid": PlaidIntegration(),
+            "spotify": SpotifyIntegration(),
+            "notion": NotionIntegration(),
+        }
+    return _PROVIDER_MAP.get(integration_id)
 
 
 class OAuthService:
     """
-    Manages OAuth flows and token storage for all integrations.
+    Centralized OAuth lifecycle manager for all integrations.
 
-    Instance is a singleton (see ``get_oauth_service``). All methods are
-    async-safe and use Firestore as the backing store.
+    Usage::
+
+        svc = OAuthService()
+        await svc.connect()
+
+        url, state = await svc.get_oauth_url("google_calendar", user_id, redirect_uri)
+        tokens = await svc.exchange_code("google_calendar", code, state, redirect_uri, user_id)
+        stored = await svc.load_tokens(user_id, "google_calendar")
+        fresh = await svc.ensure_fresh_tokens(user_id, "google_calendar")
+        await svc.revoke_tokens(user_id, "google_calendar")
     """
 
-    def __init__(self) -> None:
-        self._fs = get_firestore_client()
-        self._http: httpx.AsyncClient | None = None
+    _TOKENS_COLLECTION = "integration_tokens"
+    _STATES_COLLECTION = "oauth_states"
+    _STATE_TTL_SECONDS = 600  # 10 minutes
 
-    # ─── Lifecycle ───────────────────────────────────────────────────────────────
+    def __init__(
+        self,
+        config: ZenSenseiConfig | None = None,
+        db: FirestoreClient | None = None,
+    ) -> None:
+        self._config = config or get_config()
+        self._db = db or get_firestore_client()
 
     async def connect(self) -> None:
-        """Initialise the shared HTTP client and validate Firestore access."""
-        self._http = httpx.AsyncClient(timeout=30.0)
-        await self._fs.health_check()
+        """Initialise the Firestore client."""
+        await self._db.connect()
 
     async def close(self) -> None:
-        """Close the HTTP client."""
-        if self._http:
-            await self._http.aclose()
-            self._http = None
+        await self._db.close()
 
-    # ─── OAuth URL generation ────────────────────────────────────────────────────
+    # ─── URL generation ───────────────────────────────────────────────────────
 
     async def get_oauth_url(
         self,
         integration_id: str,
         user_id: str,
         redirect_uri: str,
-        scopes: list[str] | None = None,
+        scopes: Optional[list[str]] = None,
     ) -> tuple[str, str]:
         """
-        Build the authorization URL for the given integration.
+        Generate an authorization URL for the given integration.
 
-        Returns
-        -------
-        (authorization_url, state_token)
+        Stores a short-lived CSRF state token in Firestore.
+
+        Returns:
+            ``(authorization_url, state)`` tuple.
+
+        Raises:
+            ValueError: if ``integration_id`` is not a known provider.
         """
-        meta = registry.get_by_id(integration_id)
-        if not meta:
-            raise ValueError(f"Unknown integration: {integration_id}")
-        if not meta.oauth_url_template:
-            raise ValueError(f"Integration '{integration_id}' does not support OAuth")
+        provider = _get_provider_instance(integration_id)
+        if provider is None:
+            raise ValueError(f"Unknown integration: {integration_id!r}")
 
-        # Generate a CSRF state token and persist it briefly in Firestore
-        state = secrets.token_urlsafe(32)
-        await self._store_state(state, user_id, integration_id)
+        state = _generate_state()
+        auth_url = await provider.get_oauth_url(redirect_uri, state, scopes)
 
-        # Build the authorization URL
-        effective_scopes = scopes or meta.required_scopes
-        scope_str = " ".join(effective_scopes)
-
-        client_id = self._get_client_id(integration_id)
-        auth_url = (
-            meta.oauth_url_template
-            .replace("{client_id}", client_id)
-            .replace("{redirect_uri}", redirect_uri)
-            .replace("{scope}", scope_str)
-            .replace("{state}", state)
-        )
+        # Store state → (user_id, redirect_uri, integration_id) for callback validation
+        state_doc = {
+            "user_id": user_id,
+            "integration_id": integration_id,
+            "redirect_uri": redirect_uri,
+            "created_at": datetime.now(tz=timezone.utc).isoformat(),
+            "expires_at": (
+                datetime.now(tz=timezone.utc) + timedelta(seconds=self._STATE_TTL_SECONDS)
+            ).isoformat(),
+        }
+        await self._db.set(self._STATES_COLLECTION, state, state_doc)
+        logger.debug("OAuth state stored: %s for integration %s", state, integration_id)
         return auth_url, state
 
-    # ─── Token exchange ────────────────────────────────────────────────────────
+    # ─── Code exchange ────────────────────────────────────────────────────────
 
     async def exchange_code(
         self,
@@ -114,223 +150,368 @@ class OAuthService:
         user_id: str,
     ) -> dict[str, Any]:
         """
-        Exchange the authorization code for tokens.
+        Validate state, exchange the authorization code, and persist tokens.
 
-        Validates the state token, exchanges the code with the provider,
-        and persists the tokens in Firestore.
+        Args:
+            integration_id: Integration slug.
+            code: Authorization code from the OAuth callback.
+            state: CSRF state token from the callback query param.
+            redirect_uri: Must match the URI used in :meth:`get_oauth_url`.
+            user_id: ZenSensei user ID from the JWT.
+
+        Returns:
+            Token dict with at minimum ``access_token``.
+
+        Raises:
+            ValueError: on invalid/expired state or mismatched user.
         """
-        # Validate CSRF state
-        stored = await self._get_state(state)
-        if not stored:
-            raise ValueError("Invalid or expired OAuth state token")
-        if stored.get("user_id") != user_id:
-            raise ValueError("State token user mismatch")
-        if stored.get("integration_id") != integration_id:
-            raise ValueError("State token integration mismatch")
+        await self._validate_state(state, user_id, integration_id)
 
-        # Clean up state token
-        await self._delete_state(state)
+        provider = _get_provider_instance(integration_id)
+        if provider is None:
+            raise ValueError(f"Unknown integration: {integration_id!r}")
 
-        meta = registry.get_by_id(integration_id)
-        if not meta or not meta.token_url:
-            raise ValueError(f"No token URL configured for '{integration_id}'")
+        tokens = await provider.authorize(code, redirect_uri)
+        await self.store_tokens(user_id, integration_id, tokens)
 
-        client_id = self._get_client_id(integration_id)
-        client_secret = self._get_client_secret(integration_id)
-
-        http = self._http or httpx.AsyncClient(timeout=30.0)
-        resp = await http.post(
-            meta.token_url,
-            data={
-                "grant_type": "authorization_code",
-                "code": code,
-                "redirect_uri": redirect_uri,
-                "client_id": client_id,
-                "client_secret": client_secret,
-            },
-            headers={"Accept": "application/json"},
-        )
-        resp.raise_for_status()
-        tokens: dict[str, Any] = resp.json()
-
-        # Persist tokens in Firestore
-        await self._save_tokens(user_id, integration_id, tokens)
-
+        # Clean up used state
+        await self._db.delete(self._STATES_COLLECTION, state)
         return tokens
 
-    # ─── Token refresh ─────────────────────────────────────────────────────────
+    # ─── Token refresh ────────────────────────────────────────────────────────
 
-    async def refresh_token(
+    async def refresh_tokens(
+        self,
+        provider_id: str,
+        refresh_token: str,
+    ) -> dict[str, Any]:
+        """Refresh tokens using the provider's token endpoint."""
+        provider = _get_provider_instance(provider_id)
+        if provider is None:
+            raise ValueError(f"Unknown integration: {provider_id!r}")
+        return await provider.refresh_tokens(refresh_token)
+
+    async def ensure_fresh_tokens(
         self,
         user_id: str,
         integration_id: str,
     ) -> dict[str, Any]:
         """
-        Refresh the access token for the given user + integration.
+        Load stored tokens for ``user_id``/``integration_id``.
 
-        Updates Firestore with the new token data.
+        If the access token is expired (or within 5 min of expiry), automatically
+        refreshes using the stored refresh token and re-saves.
+
+        Returns:
+            Token dict ready to use.
+
+        Raises:
+            LookupError: if no tokens are stored for this user/integration.
+            RuntimeError: if refresh fails and no valid token exists.
         """
-        token_doc = await self._load_tokens(user_id, integration_id)
-        if not token_doc:
-            raise ValueError(f"No tokens found for '{integration_id}'")
-
-        refresh_token = token_doc.get("refresh_token")
-        if not refresh_token:
-            raise ValueError(f"No refresh token for '{integration_id}'")
-
-        meta = registry.get_by_id(integration_id)
-        if not meta or not meta.token_url:
-            raise ValueError(f"No token URL configured for '{integration_id}'")
-
-        client_id = self._get_client_id(integration_id)
-        client_secret = self._get_client_secret(integration_id)
-
-        http = self._http or httpx.AsyncClient(timeout=30.0)
-        resp = await http.post(
-            meta.token_url,
-            data={
-                "grant_type": "refresh_token",
-                "refresh_token": refresh_token,
-                "client_id": client_id,
-                "client_secret": client_secret,
-            },
-            headers={"Accept": "application/json"},
-        )
-        resp.raise_for_status()
-        new_tokens: dict[str, Any] = resp.json()
-
-        # Merge: keep old refresh token if not returned
-        if "refresh_token" not in new_tokens:
-            new_tokens["refresh_token"] = refresh_token
-
-        await self._save_tokens(user_id, integration_id, new_tokens)
-        return new_tokens
-
-    # ─── Status & listing ────────────────────────────────────────────────────────
-
-    async def get_status(
-        self, user_id: str, integration_id: str
-    ) -> dict[str, Any] | None:
-        """Return the Firestore status document for a user's integration."""
-        return await self._load_tokens(user_id, integration_id)
-
-    async def list_connected(
-        self, user_id: str
-    ) -> list[dict[str, Any]]:
-        """List all integrations the user has connected."""
-        try:
-            docs = await self._fs.list_collection(
-                f"{_USERS_COL}/{user_id}/{_INTEGRATIONS_SUB}"
+        tokens = await self.load_tokens(user_id, integration_id)
+        if not tokens:
+            raise LookupError(
+                f"No tokens found for user {user_id!r} / integration {integration_id!r}"
             )
-            return [d for d in docs if d.get("status") == IntegrationStatus.CONNECTED]
-        except Exception as exc:
-            logger.warning("list_connected failed: %s", exc)
-            return []
 
-    # ─── Revocation ─────────────────────────────────────────────────────────────
+        expires_at_str: Optional[str] = tokens.get("expires_at")
+        if expires_at_str:
+            try:
+                expires_at = datetime.fromisoformat(expires_at_str)
+                # Refresh if within 5 minutes of expiry
+                if datetime.now(tz=timezone.utc) >= expires_at - timedelta(minutes=5):
+                    refresh_token = tokens.get("refresh_token")
+                    if refresh_token:
+                        logger.info(
+                            "Refreshing tokens for user %s / %s",
+                            user_id,
+                            integration_id,
+                        )
+                        new_tokens = await self.refresh_tokens(integration_id, refresh_token)
+                        # Merge: preserve refresh_token if provider doesn't return one
+                        new_tokens.setdefault("refresh_token", refresh_token)
+                        await self.store_tokens(user_id, integration_id, new_tokens)
+                        return new_tokens
+            except (ValueError, TypeError):
+                pass
 
-    async def revoke_tokens(
-        self, user_id: str, integration_id: str
-    ) -> None:
-        """Revoke tokens at the provider and delete from Firestore."""
-        token_doc = await self._load_tokens(user_id, integration_id)
-        if token_doc:
-            meta = registry.get_by_id(integration_id)
-            revoke_url = meta.revoke_url if meta else None
-            if revoke_url:
-                http = self._http or httpx.AsyncClient(timeout=10.0)
-                with contextlib.suppress(Exception):
-                    await http.post(revoke_url, data={"token": token_doc.get("access_token", "")})
+        return tokens
 
-        await self._delete_tokens(user_id, integration_id)
+    # ─── Token storage ────────────────────────────────────────────────────────
 
-    # ─── Firestore helpers ───────────────────────────────────────────────────────
-
-    async def _save_tokens(
+    async def store_tokens(
         self,
         user_id: str,
         integration_id: str,
         tokens: dict[str, Any],
     ) -> None:
-        now = datetime.now(tz=timezone.utc).isoformat()
-        doc = {
-            **tokens,
-            "integration_id": integration_id,
-            "status": IntegrationStatus.CONNECTED,
-            "connected_at": now,
-            "last_synced_at": None,
-            "error_message": None,
-            "sync_cursor": None,
-        }
-        path = f"{_USERS_COL}/{user_id}/{_INTEGRATIONS_SUB}/{integration_id}"
-        await self._fs.set_document(path, doc)
+        """
+        Persist tokens to Firestore, encrypted with the service secret key.
 
-    async def _load_tokens(
+        Token encryption uses HMAC-SHA256 to derive a key from the
+        ``secret_key`` config value, then stores base64-encoded ciphertext.
+        In production this should use Google Cloud Secret Manager or KMS.
+        """
+        encrypted = _encrypt_tokens(tokens, self._config.secret_key)
+        doc = {
+            "integration_id": integration_id,
+            "user_id": user_id,
+            "encrypted_tokens": encrypted,
+            "status": IntegrationStatus.CONNECTED,
+            "connected_at": datetime.now(tz=timezone.utc).isoformat(),
+            "updated_at": datetime.now(tz=timezone.utc).isoformat(),
+            # Store non-sensitive metadata in plain text for quick access
+            "scopes": tokens.get("scope", "").split() if isinstance(tokens.get("scope"), str) else tokens.get("scope", []),
+            "expires_at": _compute_expiry(tokens),
+            "sync_cursor": tokens.get("sync_token") or tokens.get("sync_cursor"),
+        }
+        doc_id = f"{user_id}__{integration_id}"
+        await self._db.set(self._TOKENS_COLLECTION, doc_id, doc)
+        logger.info("Stored tokens for user %s / %s", user_id, integration_id)
+
+    async def load_tokens(
         self,
         user_id: str,
         integration_id: str,
-    ) -> dict[str, Any] | None:
-        path = f"{_USERS_COL}/{user_id}/{_INTEGRATIONS_SUB}/{integration_id}"
-        return await self._fs.get_document(path)
+    ) -> Optional[dict[str, Any]]:
+        """
+        Load and decrypt stored tokens.
 
-    async def _delete_tokens(self, user_id: str, integration_id: str) -> None:
-        path = f"{_USERS_COL}/{user_id}/{_INTEGRATIONS_SUB}/{integration_id}"
-        await self._fs.delete_document(path)
+        Returns:
+            Decrypted token dict, or ``None`` if not found.
+        """
+        doc_id = f"{user_id}__{integration_id}"
+        doc = await self._db.get(self._TOKENS_COLLECTION, doc_id)
+        if not doc:
+            return None
 
-    async def _store_state(
+        encrypted = doc.get("encrypted_tokens")
+        if not encrypted:
+            return None
+
+        tokens = _decrypt_tokens(encrypted, self._config.secret_key)
+        # Re-attach expiry metadata
+        tokens["expires_at"] = doc.get("expires_at")
+        tokens["sync_cursor"] = doc.get("sync_cursor")
+        return tokens
+
+    async def update_sync_cursor(
+        self,
+        user_id: str,
+        integration_id: str,
+        cursor: Optional[str],
+        last_synced_at: Optional[str] = None,
+    ) -> None:
+        """Update the sync cursor and last_synced_at after a successful sync."""
+        doc_id = f"{user_id}__{integration_id}"
+        await self._db.update(
+            self._TOKENS_COLLECTION,
+            doc_id,
+            {
+                "sync_cursor": cursor,
+                "last_synced_at": last_synced_at or datetime.now(tz=timezone.utc).isoformat(),
+                "status": IntegrationStatus.CONNECTED,
+                "error_message": None,
+            },
+        )
+
+    async def mark_error(
+        self,
+        user_id: str,
+        integration_id: str,
+        error: str,
+    ) -> None:
+        """Mark an integration as errored after a failed sync/refresh."""
+        doc_id = f"{user_id}__{integration_id}"
+        try:
+            await self._db.update(
+                self._TOKENS_COLLECTION,
+                doc_id,
+                {
+                    "status": IntegrationStatus.ERROR,
+                    "error_message": error,
+                    "updated_at": datetime.now(tz=timezone.utc).isoformat(),
+                },
+            )
+        except Exception as exc:
+            logger.warning("Could not mark error for %s/%s: %s", user_id, integration_id, exc)
+
+    # ─── Revocation ───────────────────────────────────────────────────────────
+
+    async def revoke_tokens(
+        self,
+        user_id: str,
+        integration_id: str,
+    ) -> None:
+        """
+        Revoke tokens with the provider and delete from Firestore.
+
+        Does not raise on provider revocation errors (tokens are deleted
+        from Firestore regardless).
+        """
+        tokens = await self.load_tokens(user_id, integration_id)
+        if tokens:
+            provider = _get_provider_instance(integration_id)
+            if provider:
+                try:
+                    await provider.disconnect(user_id, tokens)
+                except Exception as exc:
+                    logger.warning(
+                        "Provider revocation failed for %s/%s: %s",
+                        user_id,
+                        integration_id,
+                        exc,
+                    )
+
+        doc_id = f"{user_id}__{integration_id}"
+        await self._db.delete(self._TOKENS_COLLECTION, doc_id)
+        logger.info("Revoked and deleted tokens for user %s / %s", user_id, integration_id)
+
+    # ─── Connected integrations listing ───────────────────────────────────────
+
+    async def list_connected(self, user_id: str) -> list[dict[str, Any]]:
+        """Return all connected integrations for a user (without token data)."""
+        docs = await self._db.query_collection(
+            self._TOKENS_COLLECTION,
+            filters=[("user_id", "==", user_id)],
+            limit=200,
+        )
+        result = []
+        for doc in docs:
+            result.append({
+                "integration_id": doc.get("integration_id"),
+                "status": doc.get("status", IntegrationStatus.CONNECTED),
+                "connected_at": doc.get("connected_at"),
+                "last_synced_at": doc.get("last_synced_at"),
+                "scopes": doc.get("scopes", []),
+                "error_message": doc.get("error_message"),
+            })
+        return result
+
+    async def get_status(
+        self,
+        user_id: str,
+        integration_id: str,
+    ) -> Optional[dict[str, Any]]:
+        """Return status metadata for one integration (no tokens)."""
+        doc_id = f"{user_id}__{integration_id}"
+        doc = await self._db.get(self._TOKENS_COLLECTION, doc_id)
+        if not doc:
+            return None
+        return {
+            "integration_id": integration_id,
+            "status": doc.get("status", IntegrationStatus.AVAILABLE),
+            "connected_at": doc.get("connected_at"),
+            "last_synced_at": doc.get("last_synced_at"),
+            "error_message": doc.get("error_message"),
+            "sync_cursor": doc.get("sync_cursor"),
+        }
+
+    # ─── Internal helpers ─────────────────────────────────────────────────────
+
+    async def _validate_state(
         self,
         state: str,
         user_id: str,
         integration_id: str,
     ) -> None:
-        path = f"{_OAUTH_STATES_COL}/{state}"
-        expires_at = (datetime.now(tz=timezone.utc) + timedelta(minutes=10)).isoformat()
-        await self._fs.set_document(path, {
-            "user_id": user_id,
-            "integration_id": integration_id,
-            "expires_at": expires_at,
-        })
-
-    async def _get_state(self, state: str) -> dict[str, Any] | None:
-        path = f"{_OAUTH_STATES_COL}/{state}"
-        doc = await self._fs.get_document(path)
+        doc = await self._db.get(self._STATES_COLLECTION, state)
         if not doc:
-            return None
-        # Check expiry
-        expires_at_str = doc.get("expires_at")
-        if expires_at_str:
-            try:
-                exp = datetime.fromisoformat(expires_at_str)
-                if datetime.now(tz=timezone.utc) > exp:
-                    await self._delete_state(state)
-                    return None
-            except ValueError:
-                pass
-        return doc
+            raise ValueError("Invalid or expired OAuth state token")
 
-    async def _delete_state(self, state: str) -> None:
-        path = f"{_OAUTH_STATES_COL}/{state}"
-        await self._fs.delete_document(path)
+        expires_at_str = doc.get("expires_at", "")
+        try:
+            expires_at = datetime.fromisoformat(expires_at_str)
+            if datetime.now(tz=timezone.utc) > expires_at:
+                raise ValueError("OAuth state token has expired")
+        except (ValueError, TypeError) as exc:
+            if "expired" in str(exc):
+                raise
+            raise ValueError("Invalid OAuth state token format") from exc
 
-    # ─── Config helpers ──────────────────────────────────────────────────────────
-
-    @staticmethod
-    def _get_client_id(integration_id: str) -> str:
-        import os
-        key = f"{integration_id.upper()}_CLIENT_ID"
-        return os.environ.get(key, "")
-
-    @staticmethod
-    def _get_client_secret(integration_id: str) -> str:
-        import os
-        key = f"{integration_id.upper()}_CLIENT_SECRET"
-        return os.environ.get(key, "")
+        if doc.get("user_id") != user_id:
+            raise ValueError("OAuth state user_id mismatch")
+        if doc.get("integration_id") != integration_id:
+            raise ValueError("OAuth state integration_id mismatch")
 
 
-# ─── Singleton accessor ───────────────────────────────────────────────────────────
+# ─── Crypto helpers ───────────────────────────────────────────────────────────
+
+def _generate_state() -> str:
+    """Generate a cryptographically secure random state token."""
+    return secrets.token_urlsafe(32)
 
 
-@lru_cache(maxsize=1)
+def _get_fernet() -> Fernet:
+    """
+    Return a Fernet instance using the key from the OAUTH_ENCRYPTION_KEY env var.
+
+    The env var must contain a valid URL-safe base64-encoded 32-byte Fernet key
+    (as produced by ``Fernet.generate_key()``).  Raises ``RuntimeError`` if
+    the env var is missing or the key is malformed.
+    """
+    raw_key = os.environ.get("OAUTH_ENCRYPTION_KEY", "")
+    if not raw_key:
+        raise RuntimeError(
+            "OAUTH_ENCRYPTION_KEY environment variable is not set. "
+            "Generate one with: "
+            "python -c \"from cryptography.fernet import Fernet; "
+            "print(Fernet.generate_key().decode())\""
+        )
+    return Fernet(raw_key.encode() if isinstance(raw_key, str) else raw_key)
+
+
+def _encrypt_tokens(tokens: dict[str, Any], secret: str) -> str:  # noqa: ARG001
+    """
+    Encrypt token dict using Fernet (AES-128-CBC + HMAC-SHA256).
+
+    The ``secret`` parameter is accepted for API compatibility but is not used;
+    the Fernet key is loaded from the OAUTH_ENCRYPTION_KEY env var.
+    """
+    fernet = _get_fernet()
+    plaintext = json.dumps(tokens, default=str).encode()
+    return fernet.encrypt(plaintext).decode()
+
+
+def _decrypt_tokens(encrypted: str, secret: str) -> dict[str, Any]:  # noqa: ARG001
+    """
+    Decrypt tokens produced by :func:`_encrypt_tokens`.
+
+    The ``secret`` parameter is accepted for API compatibility but is not used;
+    the Fernet key is loaded from the OAUTH_ENCRYPTION_KEY env var.
+
+    Raises:
+        ValueError: if the token is invalid or has been tampered with.
+    """
+    fernet = _get_fernet()
+    try:
+        ciphertext = encrypted.encode() if isinstance(encrypted, str) else encrypted
+        plaintext = fernet.decrypt(ciphertext)
+        return json.loads(plaintext.decode())
+    except InvalidToken as exc:
+        logger.error("Failed to decrypt OAuth tokens: invalid or tampered ciphertext")
+        raise ValueError("Invalid or tampered OAuth token ciphertext") from exc
+
+
+def _compute_expiry(tokens: dict[str, Any]) -> Optional[str]:
+    """Compute an ISO-8601 expiry timestamp from token ``expires_in`` field."""
+    expires_in = tokens.get("expires_in")
+    if isinstance(expires_in, (int, float)):
+        return (
+            datetime.now(tz=timezone.utc) + timedelta(seconds=int(expires_in))
+        ).isoformat()
+    return None
+
+
+# ─── Module-level singleton ────────────────────────────────────────────────────
+
+_oauth_service: OAuthService | None = None
+
+
 def get_oauth_service() -> OAuthService:
-    """Return the global OAuthService singleton."""
-    return OAuthService()
+    """Return the module-level OAuthService singleton."""
+    global _oauth_service
+    if _oauth_service is None:
+        _oauth_service = OAuthService()
+    return _oauth_service
