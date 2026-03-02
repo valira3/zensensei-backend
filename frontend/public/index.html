@@ -9,11 +9,3944 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js" defer></script>
   <style>
-/* FULL CONTENT PLACEHOLDER - this push is a test of the mechanism */
-body { font-family: sans-serif; }
+/* ============================================
+   RESET & BASE
+   ============================================ */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+  -webkit-text-size-adjust: none;
+  text-size-adjust: none;
+}
+
+/* ============================================
+   DESIGN TOKENS
+   ============================================ */
+:root {
+  --font-body: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+
+  --space-1:  0.25rem;
+  --space-2:  0.5rem;
+  --space-3:  0.75rem;
+  --space-4:  1rem;
+  --space-5:  1.25rem;
+  --space-6:  1.5rem;
+  --space-8:  2rem;
+  --space-10: 2.5rem;
+  --space-12: 3rem;
+
+  --radius-sm: 0.375rem;
+  --radius-md: 0.5rem;
+  --radius-lg: 0.75rem;
+  --radius-xl: 1rem;
+  --radius-2xl: 1.25rem;
+  --radius-full: 9999px;
+
+  --ease: cubic-bezier(0.16, 1, 0.3, 1);
+  --transition-fast: 180ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* LIGHT MODE */
+:root, [data-theme="light"] {
+  --color-bg:           #FFFFFF;
+  --color-surface:      #F8FAFC;
+  --color-surface-2:    #F1F5F9;
+  --color-surface-offset: #E2E8F0;
+  --color-divider:      #E2E8F0;
+  --color-border:       #E2E8F0;
+
+  --color-text:         #0F172A;
+  --color-text-muted:   #6B7280;
+  --color-text-faint:   #9CA3AF;
+  --color-text-inverse: #FFFFFF;
+
+  --color-primary:       #3B82F6;
+  --color-primary-hover: #2563EB;
+  --color-primary-light: #DBEAFE;
+  --color-primary-bg:    #EFF6FF;
+
+  --color-success:       #10B981;
+  --color-success-light: #D1FAE5;
+  --color-success-bg:    #ECFDF5;
+
+  --color-warning:       #F59E0B;
+  --color-warning-light: #FEF3C7;
+  --color-warning-bg:    #FFFBEB;
+
+  --color-purple:        #8B5CF6;
+  --color-purple-light:  #EDE9FE;
+  --color-purple-bg:     #F5F3FF;
+
+  --color-celebration:   #FBBF24;
+  --color-error:         #EF4444;
+  --color-error-light:   #FEE2E2;
+
+  --shadow-sm: 0 1px 2px rgba(15,23,42,0.04);
+  --shadow-md: 0 4px 12px rgba(15,23,42,0.07);
+  --shadow-lg: 0 12px 32px rgba(15,23,42,0.1);
+
+  --phone-outer-bg: linear-gradient(135deg, #3B82F6 0%, #1E40AF 50%, #3B82F6 100%);
+  --phone-shell: #1a1a1a;
+}
+
+/* DARK MODE */
+[data-theme="dark"] {
+  --color-bg:           #0F172A;
+  --color-surface:      #1E293B;
+  --color-surface-2:    #334155;
+  --color-surface-offset: #475569;
+  --color-divider:      rgba(148,163,184,0.12);
+  --color-border:       rgba(148,163,184,0.12);
+
+  --color-text:         #F1F5F9;
+  --color-text-muted:   #94A3B8;
+  --color-text-faint:   #64748B;
+  --color-text-inverse: #0F172A;
+
+  --color-primary:       #60A5FA;
+  --color-primary-hover: #3B82F6;
+  --color-primary-light: rgba(59,130,246,0.18);
+  --color-primary-bg:    rgba(59,130,246,0.08);
+
+  --color-success:       #34D399;
+  --color-success-light: rgba(16,185,129,0.18);
+  --color-success-bg:    rgba(16,185,129,0.08);
+
+  --color-warning:       #FBBF24;
+  --color-warning-light: rgba(245,158,11,0.18);
+  --color-warning-bg:    rgba(245,158,11,0.08);
+
+  --color-purple:        #A78BFA;
+  --color-purple-light:  rgba(139,92,246,0.18);
+  --color-purple-bg:     rgba(139,92,246,0.08);
+
+  --color-celebration:   #FBBF24;
+  --color-error:         #F87171;
+  --color-error-light:   rgba(239,68,68,0.18);
+
+  --shadow-sm: 0 1px 2px rgba(0,0,0,0.2);
+  --shadow-md: 0 4px 12px rgba(0,0,0,0.25);
+  --shadow-lg: 0 12px 32px rgba(0,0,0,0.35);
+
+  --phone-outer-bg: linear-gradient(135deg, #1E293B 0%, #0F172A 50%, #1E293B 100%);
+  --phone-shell: #0a0a0a;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* ============================================
+   OUTER PAGE (behind phone)
+   ============================================ */
+body {
+  font-family: var(--font-body);
+  margin: 0;
+  min-height: 100dvh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--phone-outer-bg);
+  overflow: hidden;
+  transition: background 0.4s var(--ease);
+}
+
+/* ============================================
+   PHONE FRAME
+   ============================================ */
+.phone-frame {
+  width: 375px;
+  height: 812px;
+  border-radius: 44px;
+  background: var(--phone-shell);
+  padding: 4px;
+  box-shadow:
+    0 0 0 1px rgba(255,255,255,0.08),
+    0 25px 60px rgba(0,0,0,0.35),
+    0 8px 24px rgba(0,0,0,0.2),
+    inset 0 1px 0 rgba(255,255,255,0.06);
+  position: relative;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.phone-inner {
+  width: 100%;
+  height: 100%;
+  border-radius: 40px;
+  background: var(--color-bg);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  transition: background-color 0.35s var(--ease);
+}
+
+/* Status bar */
+.status-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 14px 28px 8px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-text);
+  flex-shrink: 0;
+  z-index: 10;
+  background: var(--color-bg);
+  transition: background-color 0.35s var(--ease), color 0.35s var(--ease);
+}
+.status-bar .time { font-variant-numeric: tabular-nums; }
+.status-bar .icons { display: flex; gap: 6px; align-items: center; }
+.status-bar .icons svg { flex-shrink: 0; }
+
+/* ============================================
+   APP CONTENT AREA
+   ============================================ */
+.app-content {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  position: relative;
+}
+
+/* Screen containers */
+.screen {
+  display: none;
+  padding: 0 20px 24px;
+  animation: fadeIn 0.3s var(--ease);
+  min-height: 100%;
+}
+.screen.active { display: block; }
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateX(8px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+@keyframes fadeInReverse {
+  from { opacity: 0; transform: translateX(-8px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+/* ============================================
+   BOTTOM NAV
+   ============================================ */
+.bottom-nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-around;
+  padding: 8px 8px 28px;
+  background: var(--color-bg);
+  border-top: 1px solid var(--color-divider);
+  flex-shrink: 0;
+  z-index: 10;
+  transition: background-color 0.35s var(--ease), border-color 0.35s var(--ease);
+}
+.nav-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  cursor: pointer;
+  border: none;
+  background: none;
+  color: var(--color-text-faint);
+  font-family: var(--font-body);
+  font-size: 10px;
+  font-weight: 500;
+  padding: 4px 12px;
+  border-radius: var(--radius-lg);
+  transition: color var(--transition-fast);
+  -webkit-tap-highlight-color: transparent;
+}
+.nav-item svg { width: 22px; height: 22px; stroke-width: 1.8; }
+.nav-item.active { color: var(--color-primary); }
+.nav-item:active { opacity: 0.7; }
+
+.nav-item-log {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: var(--color-primary);
+  color: white !important;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  border: none;
+  box-shadow: 0 4px 12px rgba(59,130,246,0.3);
+  transition: transform var(--transition-fast), box-shadow var(--transition-fast);
+  margin-top: -12px;
+}
+.nav-item-log svg { width: 24px; height: 24px; stroke-width: 2.5; }
+.nav-item-log:hover { transform: scale(1.08); }
+.nav-item-log:active { transform: scale(0.95); }
+
+/* ============================================
+   SHARED COMPONENTS
+   ============================================ */
+
+/* Top App Bar */
+.app-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 4px 0 16px;
+}
+.app-bar-left { display: flex; align-items: center; gap: var(--space-3); }
+.app-bar-right { display: flex; align-items: center; gap: var(--space-3); }
+.app-logo {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--color-primary);
+  letter-spacing: -0.02em;
+}
+.icon-btn {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  border: none;
+  background: var(--color-surface);
+  color: var(--color-text-muted);
+  transition: background var(--transition-fast), color var(--transition-fast);
+}
+.icon-btn svg { width: 18px; height: 18px; }
+.icon-btn:hover { background: var(--color-surface-2); color: var(--color-text); }
+.icon-btn:active { background: var(--color-surface-offset); }
+
+.avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--color-primary), var(--color-purple));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-weight: 600;
+  font-size: 14px;
+}
+
+/* Back button header */
+.screen-header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: 4px 0 16px;
+}
+.back-btn {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  border: none;
+  background: var(--color-surface);
+  color: var(--color-text);
+  transition: background var(--transition-fast);
+}
+.back-btn svg { width: 20px; height: 20px; }
+.back-btn:hover { background: var(--color-surface-2); }
+.back-btn:active { background: var(--color-surface-offset); }
+.screen-title {
+  font-size: 18px;
+  font-weight: 600;
+  flex: 1;
+  color: var(--color-text);
+}
+.header-action {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-primary);
+  cursor: pointer;
+  border: none;
+  background: none;
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-md);
+  transition: background var(--transition-fast);
+}
+.header-action:hover { background: var(--color-primary-light); }
+
+/* Cards */
+.card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-xl);
+  padding: var(--space-4);
+  margin-bottom: var(--space-3);
+  transition: background-color 0.35s var(--ease), border-color 0.35s var(--ease);
+}
+.card-clickable {
+  cursor: pointer;
+  transition: background var(--transition-fast), border-color var(--transition-fast), transform var(--transition-fast);
+}
+.card-clickable:hover { background: var(--color-surface-2); }
+.card-clickable:active { transform: scale(0.98); }
+
+.card-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--color-text);
+  margin-bottom: var(--space-2);
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+.card-subtitle {
+  font-size: 12px;
+  color: var(--color-text-muted);
+}
+
+/* Section labels */
+.section-label {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--color-text-faint);
+  margin: var(--space-5) 0 var(--space-3);
+}
+
+/* Progress Bar */
+.progress-bar {
+  height: 6px;
+  background: var(--color-surface-2);
+  border-radius: var(--radius-full);
+  overflow: hidden;
+}
+.progress-fill {
+  height: 100%;
+  border-radius: var(--radius-full);
+  width: 0;
+  transition: width 0.8s var(--ease);
+}
+.fill-blue    { background: var(--color-primary); }
+.fill-green   { background: var(--color-success); }
+.fill-orange  { background: var(--color-warning); }
+.fill-purple  { background: var(--color-purple); }
+
+/* Badge */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: var(--radius-full);
+  font-size: 11px;
+  font-weight: 600;
+}
+.badge-blue   { background: var(--color-primary-light); color: var(--color-primary); }
+.badge-green  { background: var(--color-success-light); color: var(--color-success); }
+.badge-orange { background: var(--color-warning-light); color: var(--color-warning); }
+.badge-purple { background: var(--color-purple-light); color: var(--color-purple); }
+
+/* Tabular numbers */
+.num { font-variant-numeric: tabular-nums lining-nums; }
+
+/* Greeting */
+.greeting { margin-bottom: var(--space-4); }
+.greeting-text {
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--color-text);
+  letter-spacing: -0.02em;
+}
+.greeting-date {
+  font-size: 13px;
+  color: var(--color-text-muted);
+  margin-top: 2px;
+}
+
+/* ============================================
+   HOME SCREEN
+   ============================================ */
+
+/* Today's Focus */
+.focus-item {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+  padding: var(--space-3) 0;
+}
+.focus-item + .focus-item { border-top: 1px solid var(--color-divider); }
+.focus-check {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  border: 2px solid var(--color-border);
+  flex-shrink: 0;
+  margin-top: 2px;
+  cursor: pointer;
+  transition: border-color var(--transition-fast), background var(--transition-fast);
+}
+.focus-check:hover { border-color: var(--color-primary); }
+.focus-check.checked {
+  border-color: var(--color-success);
+  background: var(--color-success);
+}
+.focus-text { font-size: 13px; font-weight: 500; color: var(--color-text); line-height: 1.4; }
+.focus-meta { font-size: 11px; color: var(--color-text-faint); margin-top: 2px; }
+
+/* Metric Grid */
+.metric-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-3);
+}
+.metric-card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-xl);
+  padding: var(--space-3) var(--space-4);
+  cursor: pointer;
+  transition: background var(--transition-fast), transform var(--transition-fast), border-color var(--transition-fast);
+}
+.metric-card:hover { background: var(--color-surface-2); }
+.metric-card:active { transform: scale(0.97); }
+.metric-icon {
+  width: 28px;
+  height: 28px;
+  border-radius: var(--radius-md);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: var(--space-2);
+}
+.metric-icon svg { width: 16px; height: 16px; }
+.metric-label {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.metric-value {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--color-text);
+  font-variant-numeric: tabular-nums lining-nums;
+  margin: 2px 0;
+}
+.metric-sub {
+  font-size: 11px;
+  color: var(--color-text-faint);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Insight card */
+.insight-card {
+  background: var(--color-purple-bg);
+  border: 1px solid var(--color-purple-light);
+  border-radius: var(--radius-xl);
+  padding: var(--space-4);
+  margin-bottom: var(--space-3);
+}
+.insight-header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-bottom: var(--space-3);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-purple);
+}
+.insight-header svg { width: 16px; height: 16px; }
+.insight-item {
+  font-size: 12px;
+  color: var(--color-text);
+  line-height: 1.5;
+  padding: var(--space-2) 0;
+}
+.insight-item + .insight-item { border-top: 1px solid var(--color-purple-light); }
+
+/* ============================================
+   ACADEMICS SCREEN
+   ============================================ */
+.perf-card {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  padding: var(--space-4);
+}
+.gpa-circle {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  border: 3px solid var(--color-primary);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.gpa-num { font-size: 20px; font-weight: 700; color: var(--color-primary); font-variant-numeric: tabular-nums; }
+.gpa-label { font-size: 9px; font-weight: 500; color: var(--color-text-faint); text-transform: uppercase; letter-spacing: 0.04em; }
+.perf-detail { flex: 1; }
+.perf-stat { font-size: 13px; color: var(--color-text); margin-bottom: 4px; }
+.perf-stat strong { font-weight: 600; }
+
+.course-card {
+  border-radius: var(--radius-xl);
+  overflow: hidden;
+}
+.course-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.course-name { font-size: 14px; font-weight: 600; color: var(--color-text); }
+.course-grade { font-size: 14px; font-weight: 700; color: var(--color-success); font-variant-numeric: tabular-nums; }
+.course-meta { font-size: 12px; color: var(--color-text-muted); margin-top: 4px; }
+.course-assignments {
+  margin-top: var(--space-3);
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--color-divider);
+}
+.assignment-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 6px 0;
+  font-size: 12px;
+}
+.assignment-name { color: var(--color-text); font-weight: 500; }
+.assignment-due { color: var(--color-text-faint); font-variant-numeric: tabular-nums; }
+
+/* ============================================
+   GOALS SCREEN
+   ============================================ */
+.goal-card { cursor: default; }
+.goal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--space-2);
+}
+.goal-name { font-size: 14px; font-weight: 600; color: var(--color-text); }
+.goal-pct { font-size: 14px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.goal-desc { font-size: 12px; color: var(--color-text-muted); margin-bottom: var(--space-3); }
+
+.project-card {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+.project-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: var(--radius-lg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.project-icon svg { width: 20px; height: 20px; }
+.project-info { flex: 1; }
+.project-name { font-size: 13px; font-weight: 600; color: var(--color-text); }
+.project-status { font-size: 11px; color: var(--color-text-muted); margin-top: 2px; }
+.project-pct { font-size: 14px; font-weight: 700; font-variant-numeric: tabular-nums; color: var(--color-text); }
+
+/* ============================================
+   HEALTH SCREEN
+   ============================================ */
+.health-snapshot {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-3);
+}
+.snap-item {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-xl);
+  padding: var(--space-3);
+  text-align: center;
+}
+.snap-icon { margin-bottom: 4px; }
+.snap-icon svg { width: 20px; height: 20px; }
+.snap-value { font-size: 16px; font-weight: 700; font-variant-numeric: tabular-nums; color: var(--color-text); }
+.snap-label { font-size: 11px; color: var(--color-text-muted); }
+
+/* Sleep chart */
+.sleep-chart {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+  height: 100px;
+  padding: var(--space-3) 0;
+}
+.sleep-bar-wrap {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+.sleep-bar {
+  width: 100%;
+  border-radius: var(--radius-sm) var(--radius-sm) 0 0;
+  background: var(--color-primary);
+  transition: height 0.6s var(--ease);
+}
+.sleep-label { font-size: 10px; color: var(--color-text-faint); font-weight: 500; }
+
+/* Workout list */
+.workout-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3) 0;
+}
+.workout-item + .workout-item { border-top: 1px solid var(--color-divider); }
+.workout-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.workout-info { flex: 1; }
+.workout-name { font-size: 13px; font-weight: 500; color: var(--color-text); }
+.workout-detail { font-size: 11px; color: var(--color-text-muted); }
+.workout-date { font-size: 11px; color: var(--color-text-faint); font-variant-numeric: tabular-nums; }
+
+/* ============================================
+   FINANCE SCREEN
+   ============================================ */
+.budget-ring {
+  width: 120px;
+  height: 120px;
+  margin: 0 auto var(--space-4);
+  position: relative;
+}
+.budget-ring svg { width: 100%; height: 100%; transform: rotate(-90deg); }
+.budget-ring circle {
+  fill: none;
+  stroke-width: 8;
+  stroke-linecap: round;
+}
+.budget-ring .bg-ring { stroke: var(--color-surface-2); }
+.budget-ring .fill-ring {
+  stroke: var(--color-warning);
+  stroke-dasharray: 339.292;
+  stroke-dashoffset: 339.292;
+  transition: stroke-dashoffset 1s var(--ease);
+}
+.budget-center {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+.budget-amt { font-size: 20px; font-weight: 700; font-variant-numeric: tabular-nums; color: var(--color-text); }
+.budget-of { font-size: 11px; color: var(--color-text-muted); }
+
+.spending-bar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: 8px 0;
+}
+.spending-bar + .spending-bar { border-top: 1px solid var(--color-divider); }
+.spending-cat { font-size: 13px; font-weight: 500; color: var(--color-text); width: 100px; flex-shrink: 0; }
+.spending-track { flex: 1; height: 8px; background: var(--color-surface-2); border-radius: var(--radius-full); overflow: hidden; }
+.spending-fill { height: 100%; border-radius: var(--radius-full); transition: width 0.6s var(--ease); }
+.spending-val { font-size: 12px; font-weight: 600; color: var(--color-text-muted); width: 56px; text-align: right; font-variant-numeric: tabular-nums; }
+
+.transaction-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3) 0;
+}
+.transaction-item + .transaction-item { border-top: 1px solid var(--color-divider); }
+.tx-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-lg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.tx-icon svg { width: 16px; height: 16px; }
+.tx-info { flex: 1; }
+.tx-name { font-size: 13px; font-weight: 500; color: var(--color-text); }
+.tx-date { font-size: 11px; color: var(--color-text-faint); }
+.tx-amount { font-size: 13px; font-weight: 600; color: var(--color-text); font-variant-numeric: tabular-nums; }
+
+.savings-item {
+  margin-bottom: var(--space-3);
+}
+.savings-header {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 6px;
+}
+.savings-name { font-size: 13px; font-weight: 500; color: var(--color-text); }
+.savings-amt { font-size: 12px; color: var(--color-text-muted); font-variant-numeric: tabular-nums; }
+
+/* ============================================
+   INSIGHTS SCREEN
+   ============================================ */
+.pattern-card {
+  margin-bottom: var(--space-3);
+}
+.pattern-type {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-bottom: 6px;
+}
+.pattern-desc { font-size: 13px; color: var(--color-text); line-height: 1.5; }
+.pattern-impact { font-size: 12px; font-weight: 600; margin-top: 8px; }
+
+/* Heatmap */
+.heatmap-grid {
+  display: grid;
+  grid-template-columns: auto repeat(7, 1fr);
+  gap: 3px;
+  font-size: 10px;
+}
+.heatmap-label {
+  font-size: 10px;
+  color: var(--color-text-faint);
+  display: flex;
+  align-items: center;
+  padding-right: 6px;
+}
+.heatmap-cell {
+  aspect-ratio: 1;
+  border-radius: 3px;
+  min-width: 0;
+}
+
+.weekly-stat {
+  display: flex;
+  justify-content: space-between;
+  padding: var(--space-2) 0;
+}
+.weekly-stat + .weekly-stat { border-top: 1px solid var(--color-divider); }
+.ws-label { font-size: 13px; color: var(--color-text-muted); }
+.ws-value { font-size: 13px; font-weight: 600; color: var(--color-text); font-variant-numeric: tabular-nums; }
+
+/* ============================================
+   QUICK LOG MODAL
+   ============================================ */
+.modal-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(0,0,0,0.5);
+  z-index: 50;
+  display: none;
+  align-items: flex-end;
+  border-radius: 40px;
+  overflow: hidden;
+}
+.modal-overlay.open { display: flex; }
+.modal-sheet {
+  background: var(--color-bg);
+  width: 100%;
+  border-radius: 24px 24px 0 0;
+  padding: var(--space-4) var(--space-5) var(--space-8);
+  animation: slideUp 0.35s var(--ease);
+  max-height: 80%;
+  overflow-y: auto;
+  transition: background-color 0.35s var(--ease);
+}
+@keyframes slideUp {
+  from { transform: translateY(100%); }
+  to   { transform: translateY(0); }
+}
+.modal-handle {
+  width: 36px;
+  height: 4px;
+  background: var(--color-surface-offset);
+  border-radius: var(--radius-full);
+  margin: 0 auto var(--space-4);
+}
+.modal-title {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--color-text);
+  margin-bottom: var(--space-4);
+  text-align: center;
+}
+.log-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--space-3);
+  margin-bottom: var(--space-5);
+}
+.log-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: var(--space-4) var(--space-2);
+  border-radius: var(--radius-xl);
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  cursor: pointer;
+  font-family: var(--font-body);
+  transition: background var(--transition-fast), transform var(--transition-fast);
+}
+.log-btn svg { width: 24px; height: 24px; }
+.log-btn span { font-size: 11px; font-weight: 600; color: var(--color-text); }
+.log-btn:hover { background: var(--color-surface-2); }
+.log-btn:active { transform: scale(0.95); }
+.log-input-wrap {
+  position: relative;
+}
+.log-input {
+  width: 100%;
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-xl);
+  font-size: 14px;
+  font-family: var(--font-body);
+  background: var(--color-surface);
+  color: var(--color-text);
+  transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+}
+.log-input::placeholder { color: var(--color-text-faint); }
+.log-input:focus { outline: none; border-color: var(--color-primary); box-shadow: 0 0 0 3px var(--color-primary-light); }
+.log-hint { font-size: 11px; color: var(--color-text-faint); text-align: center; margin-top: 8px; }
+
+/* ============================================
+   PROFILE SCREEN
+   ============================================ */
+.profile-header {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: var(--space-4) 0;
+}
+.profile-avatar {
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--color-primary), var(--color-purple));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-size: 28px;
+  font-weight: 700;
+  margin-bottom: var(--space-3);
+}
+.profile-name { font-size: 20px; font-weight: 700; color: var(--color-text); }
+.profile-bio { font-size: 13px; color: var(--color-text-muted); margin-top: 2px; }
+
+.stats-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-3);
+  margin: var(--space-4) 0;
+}
+.stat-card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-xl);
+  padding: var(--space-3);
+  text-align: center;
+}
+.stat-num { font-size: 20px; font-weight: 700; font-variant-numeric: tabular-nums; color: var(--color-text); }
+.stat-label { font-size: 11px; color: var(--color-text-muted); }
+
+.setting-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-3) 0;
+}
+.setting-item + .setting-item { border-top: 1px solid var(--color-divider); }
+.setting-left {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+.setting-left svg { width: 20px; height: 20px; color: var(--color-text-muted); }
+.setting-name { font-size: 14px; font-weight: 500; color: var(--color-text); }
+
+/* Toggle switch */
+.toggle-switch {
+  width: 44px;
+  height: 24px;
+  border-radius: 12px;
+  background: var(--color-surface-offset);
+  border: none;
+  cursor: pointer;
+  position: relative;
+  transition: background var(--transition-fast);
+  flex-shrink: 0;
+}
+.toggle-switch::after {
+  content: '';
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: white;
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  transition: transform var(--transition-fast);
+  box-shadow: 0 1px 3px rgba(0,0,0,0.15);
+}
+.toggle-switch.on { background: var(--color-primary); }
+.toggle-switch.on::after { transform: translateX(20px); }
+
+/* ============================================
+   MOBILE FULLSCREEN (< 500px)
+   ============================================ */
+@media (max-width: 499px) {
+  body {
+    background: var(--color-bg);
+    align-items: stretch;
+    justify-content: stretch;
+  }
+  .phone-frame {
+    width: 100%;
+    height: 100dvh;
+    border-radius: 0;
+    padding: 0;
+    box-shadow: none;
+    background: transparent;
+  }
+  .phone-inner { border-radius: 0; }
+  .status-bar { padding: 8px 20px 6px; }
+}
+
+/* ============================================
+   AUTH SCREENS
+   ============================================ */
+
+/* Auth screen fills the content area, no side padding */
+.screen.auth-screen {
+  padding: 0;
+  display: none;
+  flex-direction: column;
+  min-height: 100%;
+  overflow-y: auto;
+}
+.screen.auth-screen.active { display: flex; }
+
+.auth-body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  padding: 32px 24px 36px;
+  overflow-y: auto;
+}
+
+.auth-logo-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-bottom: 32px;
+}
+.auth-logo {
+  font-size: 28px;
+  font-weight: 700;
+  color: var(--color-primary);
+  letter-spacing: -0.03em;
+}
+.auth-tagline {
+  font-size: 13px;
+  color: var(--color-text-muted);
+  margin-top: 4px;
+}
+
+.auth-heading {
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--color-text);
+  letter-spacing: -0.02em;
+  margin-bottom: 6px;
+}
+.auth-subheading {
+  font-size: 14px;
+  color: var(--color-text-muted);
+  margin-bottom: 24px;
+  line-height: 1.5;
+}
+
+/* Form fields */
+.auth-field {
+  margin-bottom: 14px;
+  position: relative;
+}
+.auth-label {
+  display: block;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-text);
+  margin-bottom: 6px;
+}
+.auth-input {
+  width: 100%;
+  height: 48px;
+  padding: 0 16px;
+  border: 1.5px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  font-size: 15px;
+  font-family: var(--font-body);
+  background: var(--color-bg);
+  color: var(--color-text);
+  transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+  -webkit-appearance: none;
+  appearance: none;
+}
+.auth-input::placeholder { color: var(--color-text-faint); }
+.auth-input:focus {
+  outline: none;
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px var(--color-primary-light);
+}
+.auth-input.error {
+  border-color: var(--color-error);
+  box-shadow: 0 0 0 3px var(--color-error-light);
+}
+.auth-input-pw { padding-right: 48px; }
+
+.pw-toggle {
+  position: absolute;
+  right: 14px;
+  bottom: 14px;
+  width: 20px;
+  height: 20px;
+  cursor: pointer;
+  color: var(--color-text-faint);
+  border: none;
+  background: none;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color var(--transition-fast);
+}
+.pw-toggle:hover { color: var(--color-text-muted); }
+.pw-toggle svg { width: 18px; height: 18px; stroke-width: 1.8; }
+
+/* Inline validation message */
+.auth-field-msg {
+  font-size: 12px;
+  margin-top: 5px;
+  min-height: 16px;
+  line-height: 1.4;
+}
+.auth-field-msg.error { color: var(--color-error); }
+.auth-field-msg.ok { color: var(--color-success); }
+
+/* Password strength */
+.pw-strength-bar {
+  height: 4px;
+  background: var(--color-surface-2);
+  border-radius: var(--radius-full);
+  overflow: hidden;
+  margin-top: 8px;
+}
+.pw-strength-fill {
+  height: 100%;
+  border-radius: var(--radius-full);
+  width: 0;
+  transition: width 0.35s var(--ease), background 0.35s var(--ease);
+}
+.pw-strength-label {
+  font-size: 11px;
+  font-weight: 600;
+  margin-top: 4px;
+  height: 14px;
+  transition: color 0.35s var(--ease);
+}
+
+/* Password requirements list */
+.pw-requirements {
+  margin-top: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.pw-req {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--color-text-faint);
+  transition: color var(--transition-fast);
+}
+.pw-req.met { color: var(--color-success); }
+.pw-req-icon {
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.pw-req-icon svg { width: 13px; height: 13px; stroke-width: 2.5; }
+
+/* Checkbox row */
+.auth-checkbox-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin-bottom: 4px;
+}
+.auth-checkbox {
+  width: 18px;
+  height: 18px;
+  border: 1.5px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  accent-color: var(--color-primary);
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+.auth-checkbox-label {
+  font-size: 13px;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  line-height: 1.5;
+}
+.auth-link {
+  color: var(--color-primary);
+  text-decoration: none;
+  font-weight: 500;
+  cursor: pointer;
+  background: none;
+  border: none;
+  font-family: var(--font-body);
+  font-size: inherit;
+  padding: 0;
+}
+.auth-link:hover { text-decoration: underline; }
+
+/* Primary button */
+.auth-btn {
+  width: 100%;
+  height: 48px;
+  border-radius: var(--radius-lg);
+  border: none;
+  font-size: 15px;
+  font-weight: 600;
+  font-family: var(--font-body);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  transition: background var(--transition-fast), opacity var(--transition-fast), transform var(--transition-fast);
+  -webkit-tap-highlight-color: transparent;
+}
+.auth-btn-primary {
+  background: var(--color-primary);
+  color: #fff;
+}
+.auth-btn-primary:hover { background: var(--color-primary-hover); }
+.auth-btn-primary:active { transform: scale(0.98); }
+.auth-btn-primary:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
+
+/* Outlined social buttons */
+.auth-btn-outline {
+  background: var(--color-bg);
+  color: var(--color-text);
+  border: 1.5px solid var(--color-border);
+  font-size: 14px;
+}
+.auth-btn-outline:hover { background: var(--color-surface); }
+.auth-btn-outline:active { transform: scale(0.98); }
+.social-icon { width: 18px; height: 18px; flex-shrink: 0; }
+
+/* Divider */
+.auth-divider {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 16px 0;
+  font-size: 12px;
+  color: var(--color-text-faint);
+}
+.auth-divider::before,
+.auth-divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--color-divider);
+}
+
+/* Bottom link row */
+.auth-switch {
+  text-align: center;
+  font-size: 14px;
+  color: var(--color-text-muted);
+  margin-top: 20px;
+}
+
+/* Forgot password link */
+.auth-forgot {
+  text-align: center;
+  margin-top: 12px;
+  font-size: 13px;
+  color: var(--color-text-muted);
+}
+
+/* Error banner */
+.auth-error-msg {
+  background: var(--color-error-light);
+  color: var(--color-error);
+  border-radius: var(--radius-lg);
+  padding: 10px 14px;
+  font-size: 13px;
+  font-weight: 500;
+  margin-bottom: 12px;
+  display: none;
+  animation: fadeIn 0.2s var(--ease);
+}
+.auth-error-msg.visible { display: block; }
+
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  15% { transform: translateX(-6px); }
+  35% { transform: translateX(6px); }
+  55% { transform: translateX(-4px); }
+  75% { transform: translateX(4px); }
+  90% { transform: translateX(-2px); }
+}
+.shake { animation: shake 0.45s var(--ease); }
+
+/* Spinner */
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+.spinner {
+  width: 18px;
+  height: 18px;
+  border: 2px solid rgba(255,255,255,0.35);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+  flex-shrink: 0;
+}
+
+/* Success state */
+.auth-success-box {
+  display: none;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: 16px 0;
+}
+.auth-success-box.visible { display: flex; }
+
+.auth-email-icon {
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  background: var(--color-primary-bg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 20px;
+  animation: iconPop 0.5s var(--ease);
+}
+.auth-email-icon svg { width: 38px; height: 38px; color: var(--color-primary); }
+
+@keyframes iconPop {
+  from { transform: scale(0.6); opacity: 0; }
+  to   { transform: scale(1); opacity: 1; }
+}
+
+.auth-success-title {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--color-text);
+  margin-bottom: 8px;
+}
+.auth-success-desc {
+  font-size: 14px;
+  color: var(--color-text-muted);
+  line-height: 1.6;
+  margin-bottom: 24px;
+  max-width: 260px;
+}
+
+/* Resend timer */
+.auth-resend {
+  font-size: 13px;
+  color: var(--color-text-muted);
+  text-align: center;
+  margin-top: 12px;
+}
+.resend-active { color: var(--color-primary); cursor: pointer; font-weight: 500; }
+.resend-active:hover { text-decoration: underline; }
+
+/* Logout confirmation modal */
+.logout-modal-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(0,0,0,0.5);
+  z-index: 100;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  border-radius: 40px;
+  overflow: hidden;
+  padding: 24px;
+}
+.logout-modal-overlay.open { display: flex; }
+.logout-modal-box {
+  background: var(--color-bg);
+  border-radius: var(--radius-2xl);
+  padding: 24px 20px 20px;
+  width: 100%;
+  animation: scaleIn 0.25s var(--ease);
+  box-shadow: var(--shadow-lg);
+}
+@keyframes scaleIn {
+  from { transform: scale(0.88); opacity: 0; }
+  to   { transform: scale(1); opacity: 1; }
+}
+.logout-modal-title {
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--color-text);
+  text-align: center;
+  margin-bottom: 8px;
+}
+.logout-modal-desc {
+  font-size: 13px;
+  color: var(--color-text-muted);
+  text-align: center;
+  margin-bottom: 20px;
+  line-height: 1.5;
+}
+.logout-modal-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.logout-btn-confirm {
+  background: var(--color-error);
+  color: #fff;
+}
+.logout-btn-confirm:hover { background: #DC2626; }
+.logout-btn-cancel {
+  background: var(--color-surface);
+  color: var(--color-text);
+  border: 1.5px solid var(--color-border);
+}
+.logout-btn-cancel:hover { background: var(--color-surface-2); }
+
+/* Hide bottom-nav on auth screens */
+.app-shell-auth .bottom-nav { display: none; }
+.app-shell-auth .status-bar { display: none; }
+
+/* ============================================
+   TOAST / SNACKBAR
+   ============================================ */
+.toast-container {
+  position: absolute;
+  bottom: 80px;
+  left: 16px;
+  right: 16px;
+  z-index: 1000;
+  pointer-events: none;
+}
+.toast {
+  padding: 12px 16px;
+  border-radius: var(--radius-lg);
+  margin-bottom: 8px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  animation: slideUp 300ms var(--ease);
+  pointer-events: all;
+  font-weight: 500;
+}
+.toast-success {
+  background: var(--color-success-bg);
+  color: var(--color-success);
+  border: 1px solid var(--color-success);
+}
+.toast-error {
+  background: var(--color-error-light);
+  color: var(--color-error);
+  border: 1px solid var(--color-error);
+}
+.toast-info {
+  background: var(--color-primary-bg);
+  color: var(--color-primary);
+  border: 1px solid var(--color-primary);
+}
+
+/* ============================================
+   SKELETON LOADING
+   ============================================ */
+.skeleton {
+  background: linear-gradient(90deg, var(--color-surface-2) 25%, var(--color-surface) 50%, var(--color-surface-2) 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+  border-radius: var(--radius-md);
+}
+@keyframes shimmer {
+  0%   { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+.skeleton-text   { height: 14px; width: 80%; margin-bottom: 8px; }
+.skeleton-title  { height: 20px; width: 60%; margin-bottom: 12px; }
+.skeleton-card   { height: 120px; width: 100%; margin-bottom: 12px; }
+.skeleton-circle { width: 48px; height: 48px; border-radius: 50%; }
+
+/* ============================================
+   EMPTY STATES
+   ============================================ */
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-10) var(--space-6);
+  text-align: center;
+}
+.empty-state-icon {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  background: var(--color-primary-bg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: var(--space-4);
+  color: var(--color-primary);
+}
+.empty-state-icon svg,
+.empty-state-icon i { width: 28px; height: 28px; }
+.empty-state-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--color-text);
+  margin-bottom: var(--space-2);
+}
+.empty-state-text {
+  font-size: 13px;
+  color: var(--color-text-muted);
+  line-height: 1.5;
+  margin-bottom: var(--space-5);
+  max-width: 220px;
+}
+.empty-state-action {
+  border: 1.5px solid var(--color-primary);
+  background: transparent;
+  color: var(--color-primary);
+  padding: 10px 20px;
+  border-radius: var(--radius-lg);
+  font-size: 14px;
+  font-weight: 600;
+  font-family: var(--font-body);
+  cursor: pointer;
+  transition: background var(--transition-fast);
+}
+.empty-state-action:hover { background: var(--color-primary-bg); }
+.empty-state-action:active { background: var(--color-primary-light); }
+
+/* ============================================
+   SETTINGS SUB-SCREENS
+   ============================================ */
+.settings-section {
+  margin-bottom: var(--space-4);
+}
+.settings-section .card {
+  padding: 0;
+  overflow: hidden;
+}
+.setting-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-4);
+  cursor: pointer;
+  transition: background var(--transition-fast);
+}
+.setting-item:hover { background: var(--color-surface-2); }
+.setting-item + .setting-item { border-top: 1px solid var(--color-divider); }
+.setting-label-wrap { flex: 1; margin-left: var(--space-3); }
+.setting-name { font-size: 14px; font-weight: 500; color: var(--color-text); }
+.setting-desc { font-size: 12px; color: var(--color-text-muted); margin-top: 1px; }
+
+/* Accordion / FAQ */
+.accordion-item {
+  border-bottom: 1px solid var(--color-divider);
+}
+.accordion-item:last-child { border-bottom: none; }
+.accordion-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-4);
+  cursor: pointer;
+  gap: var(--space-3);
+  border: none;
+  background: none;
+  width: 100%;
+  text-align: left;
+  font-family: var(--font-body);
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--color-text);
+  transition: background var(--transition-fast);
+}
+.accordion-header:hover { background: var(--color-surface-2); }
+.accordion-icon {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+  color: var(--color-text-faint);
+  transition: transform var(--transition-fast);
+}
+.accordion-item.open .accordion-icon { transform: rotate(180deg); }
+.accordion-body {
+  display: none;
+  padding: 0 var(--space-4) var(--space-4);
+  font-size: 13px;
+  color: var(--color-text-muted);
+  line-height: 1.6;
+}
+.accordion-item.open .accordion-body { display: block; }
+
+/* Bug report form */
+.bug-form textarea {
+  width: 100%;
+  padding: var(--space-3) var(--space-4);
+  border: 1.5px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  font-size: 14px;
+  font-family: var(--font-body);
+  background: var(--color-bg);
+  color: var(--color-text);
+  resize: none;
+  min-height: 100px;
+  transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+}
+.bug-form textarea:focus {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 1px;
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px var(--color-primary-light);
+}
+
+/* Time picker group */
+.time-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3) 0;
+}
+.time-row label {
+  font-size: 13px;
+  color: var(--color-text-muted);
+  width: 40px;
+  flex-shrink: 0;
+}
+.time-input {
+  padding: 6px 10px;
+  border: 1.5px solid var(--color-border);
+  border-radius: var(--radius-md);
+  font-size: 14px;
+  font-family: var(--font-body);
+  background: var(--color-bg);
+  color: var(--color-text);
+  flex: 1;
+}
+.time-input:focus {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 1px;
+  border-color: var(--color-primary);
+}
+
+/* ============================================
+   PROFILE EDIT FORM
+   ============================================ */
+.edit-field {
+  margin-bottom: var(--space-4);
+}
+.edit-label {
+  display: block;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-text);
+  margin-bottom: 6px;
+}
+.edit-input {
+  width: 100%;
+  height: 44px;
+  padding: 0 14px;
+  border: 1.5px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  font-size: 14px;
+  font-family: var(--font-body);
+  background: var(--color-bg);
+  color: var(--color-text);
+  transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+}
+.edit-input:focus {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 1px;
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px var(--color-primary-light);
+}
+.edit-input:disabled {
+  background: var(--color-surface);
+  color: var(--color-text-muted);
+  cursor: not-allowed;
+}
+.edit-input-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+.edit-change-link {
+  font-size: 12px;
+  color: var(--color-primary);
+  white-space: nowrap;
+  border: none;
+  background: none;
+  cursor: pointer;
+  font-family: var(--font-body);
+  font-weight: 500;
+  padding: 0;
+}
+.edit-change-link:hover { text-decoration: underline; }
+
+.edit-actions {
+  display: flex;
+  gap: var(--space-3);
+  margin-top: var(--space-5);
+}
+.btn-save {
+  flex: 1;
+  height: 44px;
+  background: var(--color-primary);
+  color: #fff;
+  border: none;
+  border-radius: var(--radius-lg);
+  font-size: 14px;
+  font-weight: 600;
+  font-family: var(--font-body);
+  cursor: pointer;
+  transition: background var(--transition-fast), transform var(--transition-fast);
+}
+.btn-save:hover { background: var(--color-primary-hover); }
+.btn-save:active { transform: scale(0.98); }
+.btn-cancel {
+  flex: 1;
+  height: 44px;
+  background: var(--color-surface);
+  color: var(--color-text);
+  border: 1.5px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  font-size: 14px;
+  font-weight: 600;
+  font-family: var(--font-body);
+  cursor: pointer;
+  transition: background var(--transition-fast), transform var(--transition-fast);
+}
+.btn-cancel:hover { background: var(--color-surface-2); }
+.btn-cancel:active { transform: scale(0.98); }
+
+/* ============================================
+   DELETE ACCOUNT CONFIRM MODAL
+   ============================================ */
+.delete-confirm-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(0,0,0,0.55);
+  z-index: 200;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  border-radius: 40px;
+  overflow: hidden;
+  padding: 24px;
+}
+.delete-confirm-overlay.open { display: flex; }
+.delete-confirm-box {
+  background: var(--color-bg);
+  border-radius: var(--radius-2xl);
+  padding: 24px 20px 20px;
+  width: 100%;
+  animation: scaleIn 0.25s var(--ease);
+  box-shadow: var(--shadow-lg);
+}
+.delete-confirm-title {
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--color-error);
+  text-align: center;
+  margin-bottom: 8px;
+}
+.delete-confirm-desc {
+  font-size: 13px;
+  color: var(--color-text-muted);
+  text-align: center;
+  margin-bottom: 16px;
+  line-height: 1.5;
+}
+.delete-confirm-input {
+  width: 100%;
+  height: 44px;
+  padding: 0 14px;
+  border: 1.5px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  font-size: 14px;
+  font-family: var(--font-body);
+  background: var(--color-bg);
+  color: var(--color-text);
+  margin-bottom: 16px;
+  transition: border-color var(--transition-fast);
+}
+.delete-confirm-input:focus {
+  outline: 2px solid var(--color-error);
+  outline-offset: 1px;
+  border-color: var(--color-error);
+}
+.btn-delete-confirm {
+  width: 100%;
+  height: 44px;
+  background: var(--color-error);
+  color: #fff;
+  border: none;
+  border-radius: var(--radius-lg);
+  font-size: 14px;
+  font-weight: 600;
+  font-family: var(--font-body);
+  cursor: pointer;
+  margin-bottom: 10px;
+  transition: background var(--transition-fast);
+}
+.btn-delete-confirm:hover { background: #DC2626; }
+.btn-delete-cancel {
+  width: 100%;
+  height: 44px;
+  background: var(--color-surface);
+  color: var(--color-text);
+  border: 1.5px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  font-size: 14px;
+  font-weight: 600;
+  font-family: var(--font-body);
+  cursor: pointer;
+  transition: background var(--transition-fast);
+}
+.btn-delete-cancel:hover { background: var(--color-surface-2); }
+
+/* ============================================
+   TERMS / PRIVACY TEXT SCREENS
+   ============================================ */
+.text-screen-body {
+  padding-bottom: var(--space-8);
+}
+.text-screen-body h2 {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--color-text);
+  margin: var(--space-5) 0 var(--space-2);
+}
+.text-screen-body p {
+  font-size: 13px;
+  color: var(--color-text-muted);
+  line-height: 1.7;
+  margin-bottom: var(--space-3);
+}
+.text-screen-body ul {
+  padding-left: var(--space-5);
+  margin-bottom: var(--space-3);
+}
+.text-screen-body li {
+  font-size: 13px;
+  color: var(--color-text-muted);
+  line-height: 1.7;
+  margin-bottom: 4px;
+}
+.text-screen-intro {
+  font-size: 12px;
+  color: var(--color-text-faint);
+  margin-bottom: var(--space-3);
+}
+
+/* ============================================
+   COMING SOON SCREENS
+   ============================================ */
+.coming-soon-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-12) var(--space-6);
+  text-align: center;
+  min-height: 300px;
+}
+.coming-soon-icon {
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  background: var(--color-surface-2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-text-faint);
+  margin-bottom: var(--space-4);
+}
+.coming-soon-icon i { width: 32px; height: 32px; }
+.coming-soon-title {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--color-text);
+  margin-bottom: var(--space-2);
+}
+.coming-soon-desc {
+  font-size: 13px;
+  color: var(--color-text-muted);
+  line-height: 1.5;
+}
+
+/* Focus visible for keyboard nav */
+:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
   </style>
 </head>
 <body>
-<p>ZenSensei - Loading full content...</p>
+
+<div class="phone-frame">
+  <div class="phone-inner">
+
+    <!-- Status Bar -->
+    <div class="status-bar">
+      <span class="time">9:41</span>
+      <div class="icons">
+        <svg viewBox="0 0 18 12" width="16" height="11" fill="currentColor"><rect x="0" y="9" width="3" height="3" rx="0.5" opacity="0.35"/><rect x="5" y="6" width="3" height="6" rx="0.5" opacity="0.5"/><rect x="10" y="3" width="3" height="9" rx="0.5" opacity="0.75"/><rect x="15" y="0" width="3" height="12" rx="0.5"/></svg>
+        <svg viewBox="0 0 25 12" width="25" height="12" fill="none"><rect x="0" y="0.5" width="22" height="11" rx="2.5" stroke="currentColor" stroke-width="1" opacity="0.4"/><rect x="23" y="3.5" width="1.5" height="5" rx="0.5" fill="currentColor" opacity="0.4"/><rect x="1.5" y="2" width="16" height="8" rx="1.5" fill="currentColor"/></svg>
+      </div>
+    </div>
+
+    <!-- App Content (scrollable) -->
+    <div class="app-content" id="appContent">
+
+      <!-- HOME SCREEN -->
+      <div class="screen" id="screen-home">
+        <div class="app-bar">
+          <div class="app-bar-left">
+            <span class="app-logo">ZenSensei</span>
+          </div>
+          <div class="app-bar-right">
+            <button class="icon-btn" aria-label="Search"><i data-lucide="search"></i></button>
+            <button class="icon-btn" aria-label="Notifications"><i data-lucide="bell"></i></button>
+            <div class="avatar">V</div>
+          </div>
+        </div>
+
+        <div class="greeting">
+          <div class="greeting-text">Welcome back, Val</div>
+          <div class="greeting-date">Nov 09, 2025</div>
+        </div>
+
+        <div class="section-label">Today's Focus</div>
+        <!-- Empty state for tasks (shown when no tasks) -->
+        <div class="empty-state" id="tasksEmptyState" style="display:none;">
+          <div class="empty-state-icon"><i data-lucide="check-circle"></i></div>
+          <h3 class="empty-state-title">All clear!</h3>
+          <p class="empty-state-text">You have no tasks for today. Add something to focus on.</p>
+          <button class="empty-state-action" onclick="showToast('Task creation coming soon!', 'info')">Add a Task</button>
+        </div>
+        <div class="card">
+          <div class="focus-item">
+            <button class="focus-check" aria-label="Mark complete" onclick="this.classList.toggle('checked'); this.setAttribute('aria-pressed', this.classList.contains('checked'))"></button>
+            <div>
+              <div class="focus-text">Complete economics homework</div>
+              <div class="focus-meta" style="color:var(--color-warning);">Due in 3 hours</div>
+            </div>
+          </div>
+          <div class="focus-item">
+            <button class="focus-check" aria-label="Mark complete" onclick="this.classList.toggle('checked'); this.setAttribute('aria-pressed', this.classList.contains('checked'))"></button>
+            <div>
+              <div class="focus-text">Study session: Calculus exam prep</div>
+              <div class="focus-meta">5pm – 6pm</div>
+            </div>
+          </div>
+          <div class="focus-item">
+            <button class="focus-check" aria-label="Mark complete" onclick="this.classList.toggle('checked'); this.setAttribute('aria-pressed', this.classList.contains('checked'))"></button>
+            <div>
+              <div class="focus-text">Track workout</div>
+              <div class="focus-meta">Goal: 4x this week · <span class="num" style="color:var(--color-primary);">2/4</span></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="section-label">Life Overview</div>
+        <div class="metric-grid">
+          <button class="metric-card" onclick="navigateTo('screen-academics')" aria-label="View Academics">
+            <div class="metric-icon" style="background:var(--color-primary-light); color:var(--color-primary);">
+              <i data-lucide="graduation-cap"></i>
+            </div>
+            <div class="metric-label">Academics</div>
+            <div class="metric-value num">3.85</div>
+            <div class="metric-sub">5 active courses</div>
+            <div class="progress-bar" style="margin-top:6px;" role="progressbar" aria-valuenow="96" aria-valuemin="0" aria-valuemax="100" aria-label="Academics progress">
+              <div class="progress-fill fill-blue" data-width="96%"></div>
+            </div>
+          </button>
+          <button class="metric-card" onclick="navigateTo('screen-health')" aria-label="View Health">
+            <div class="metric-icon" style="background:var(--color-success-light); color:var(--color-success);">
+              <i data-lucide="heart-pulse"></i>
+            </div>
+            <div class="metric-label">Health</div>
+            <div class="metric-value num">7h 15m</div>
+            <div class="metric-sub">2/4 workouts</div>
+            <div class="progress-bar" style="margin-top:6px;" role="progressbar" aria-valuenow="50" aria-valuemin="0" aria-valuemax="100" aria-label="Health progress">
+              <div class="progress-fill fill-green" data-width="50%"></div>
+            </div>
+          </button>
+          <button class="metric-card" onclick="navigateTo('screen-goals')" aria-label="View Goals">
+            <div class="metric-icon" style="background:var(--color-primary-light); color:var(--color-primary);">
+              <i data-lucide="target"></i>
+            </div>
+            <div class="metric-label">Goals</div>
+            <div class="metric-value num">48%</div>
+            <div class="metric-sub">12/25 complete</div>
+            <div class="progress-bar" style="margin-top:6px;" role="progressbar" aria-valuenow="48" aria-valuemin="0" aria-valuemax="100" aria-label="Goals progress">
+              <div class="progress-fill fill-blue" data-width="48%"></div>
+            </div>
+          </button>
+          <button class="metric-card" onclick="navigateTo('screen-finance')" aria-label="View Finance">
+            <div class="metric-icon" style="background:var(--color-warning-light); color:var(--color-warning);">
+              <i data-lucide="wallet"></i>
+            </div>
+            <div class="metric-label">Finance</div>
+            <div class="metric-value num">$234.50</div>
+            <div class="metric-sub">52% of $450</div>
+            <div class="progress-bar" style="margin-top:6px;" role="progressbar" aria-valuenow="52" aria-valuemin="0" aria-valuemax="100" aria-label="Finance progress">
+              <div class="progress-fill fill-orange" data-width="52%"></div>
+            </div>
+          </button>
+          <button class="metric-card" onclick="navigateTo('screen-relationships')" aria-label="View Relationships">
+            <div class="metric-icon" style="background:var(--color-purple-light); color:var(--color-purple);">
+              <i data-lucide="users"></i>
+            </div>
+            <div class="metric-label">Relationships</div>
+            <div class="metric-value num">3</div>
+            <div class="metric-sub">events this week</div>
+          </button>
+          <button class="metric-card" onclick="navigateTo('screen-projects')" aria-label="View Projects">
+            <div class="metric-icon" style="background:var(--color-success-light); color:var(--color-success);">
+              <i data-lucide="folder-kanban"></i>
+            </div>
+            <div class="metric-label">Projects</div>
+            <div class="metric-value num">2</div>
+            <div class="metric-sub">active · On track</div>
+          </button>
+        </div>
+
+        <div class="section-label">AI Insights</div>
+        <div class="insight-card">
+          <div class="insight-header">
+            <i data-lucide="sparkles"></i>
+            <span>Discovered Patterns</span>
+          </div>
+          <div class="insight-item">Your 3 study sessions in AP Biology correlated with <strong>+12% improvement</strong> on practice tests.</div>
+          <div class="insight-item">Sleep &lt; 7 hours reduced next-day productivity by <strong>23%</strong>.</div>
+        </div>
+
+        <div style="height:16px;"></div>
+      </div>
+
+      <!-- ACADEMICS SCREEN -->
+      <div class="screen" id="screen-academics">
+        <div class="screen-header">
+          <button class="back-btn" onclick="goBack()"><i data-lucide="arrow-left"></i></button>
+          <span class="screen-title">Academics</span>
+          <button class="header-action">+ New</button>
+        </div>
+
+        <div class="card" style="padding:0;">
+          <div class="perf-card">
+            <div class="gpa-circle">
+              <span class="gpa-num">3.85</span>
+              <span class="gpa-label">GPA</span>
+            </div>
+            <div class="perf-detail">
+              <div class="perf-stat">Target: <strong>3.90</strong></div>
+              <div class="progress-bar" style="margin:8px 0;">
+                <div class="progress-fill fill-blue" data-width="96%"></div>
+              </div>
+              <div class="perf-stat" style="font-size:12px; color:var(--color-text-muted);">Study Time: <strong class="num">18.5h</strong> this week</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="section-label">Courses</div>
+        <!-- Empty state for courses (shown when no courses) -->
+        <div class="empty-state" id="coursesEmptyState" style="display:none;">
+          <div class="empty-state-icon"><i data-lucide="book-open"></i></div>
+          <h3 class="empty-state-title">No courses added</h3>
+          <p class="empty-state-text">Add your courses to start tracking assignments and grades</p>
+          <button class="empty-state-action" onclick="showToast('Course creation coming soon!', 'info')">Add Your First Course</button>
+        </div>
+        <div class="card course-card">
+          <div class="course-header">
+            <div>
+              <div class="course-name">AP Calculus BC</div>
+              <div class="course-meta">Next: Midterm Nov 15</div>
+            </div>
+            <div class="course-grade">A- (92%)</div>
+          </div>
+          <div class="course-assignments">
+            <div class="assignment-item">
+              <span class="assignment-name">Problem Set 8</span>
+              <span class="assignment-due">Due Nov 11</span>
+            </div>
+            <div class="assignment-item">
+              <span class="assignment-name">Midterm Review</span>
+              <span class="assignment-due">Due Nov 14</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="card course-card">
+          <div class="course-header">
+            <div>
+              <div class="course-name">AP Biology</div>
+              <div class="course-meta">Next: Lab Report Nov 12</div>
+            </div>
+            <div class="course-grade">A (94%)</div>
+          </div>
+          <div class="course-assignments">
+            <div class="assignment-item">
+              <span class="assignment-name">Lab Report: Photosynthesis</span>
+              <span class="assignment-due">Due Nov 12</span>
+            </div>
+            <div class="assignment-item">
+              <span class="assignment-name">Chapter 14 Reading</span>
+              <span class="assignment-due">Due Nov 16</span>
+            </div>
+          </div>
+          <div style="margin-top:var(--space-3); padding:var(--space-3); background:var(--color-purple-bg); border-radius:var(--radius-lg); font-size:12px; color:var(--color-purple);">
+            <strong>Insight:</strong> Study sessions correlated with +12% on practice tests
+          </div>
+        </div>
+
+        <div style="height:16px;"></div>
+      </div>
+
+      <!-- GOALS SCREEN -->
+      <div class="screen" id="screen-goals">
+        <div class="screen-header">
+          <button class="back-btn" onclick="goBack()" aria-label="Go back"><i data-lucide="arrow-left"></i></button>
+          <span class="screen-title">Goals &amp; Projects</span>
+          <button class="header-action">+ New</button>
+        </div>
+
+        <div class="section-label">Short Term</div>
+        <!-- Empty state for goals (shown when no goals) -->
+        <div class="empty-state" id="goalsEmptyState" style="display:none;">
+          <div class="empty-state-icon"><i data-lucide="target"></i></div>
+          <h3 class="empty-state-title">No goals yet</h3>
+          <p class="empty-state-text">Start by adding your first goal to track your progress</p>
+          <button class="empty-state-action" onclick="showToast('Goal creation coming soon!', 'info')">Add Your First Goal</button>
+        </div>
+        <div class="card goal-card">
+          <div class="goal-header">
+            <span class="goal-name">Raise GPA to 3.90</span>
+            <span class="goal-pct" style="color:var(--color-primary);">75%</span>
+          </div>
+          <div class="goal-desc">Currently 3.85 — need to improve Calculus grade</div>
+          <div class="progress-bar"><div class="progress-fill fill-blue" data-width="75%"></div></div>
+        </div>
+
+        <div class="card goal-card">
+          <div class="goal-header">
+            <span class="goal-name">16 workouts this month</span>
+            <span class="goal-pct" style="color:var(--color-success);">50%</span>
+          </div>
+          <div class="goal-desc">8/16 completed · On pace</div>
+          <div class="progress-bar"><div class="progress-fill fill-green" data-width="50%"></div></div>
+        </div>
+
+        <div class="section-label">Long Term</div>
+        <div class="card goal-card">
+          <div class="goal-header">
+            <span class="goal-name">Top-tier university</span>
+            <span class="goal-pct" style="color:var(--color-purple);">35%</span>
+          </div>
+          <div class="goal-desc">Get accepted to a top-tier university</div>
+          <div class="progress-bar"><div class="progress-fill fill-purple" data-width="35%"></div></div>
+          <div style="margin-top:var(--space-3); font-size:12px; color:var(--color-text-muted);">
+            <div style="display:flex; gap:var(--space-2); align-items:center; padding:4px 0;">
+              <span style="color:var(--color-success);">✓</span> Maintain 3.8+ GPA
+            </div>
+            <div style="display:flex; gap:var(--space-2); align-items:center; padding:4px 0;">
+              <span style="color:var(--color-success);">✓</span> SAT prep course enrolled
+            </div>
+            <div style="display:flex; gap:var(--space-2); align-items:center; padding:4px 0;">
+              <span style="color:var(--color-text-faint);">○</span> Draft personal essay
+            </div>
+            <div style="display:flex; gap:var(--space-2); align-items:center; padding:4px 0;">
+              <span style="color:var(--color-text-faint);">○</span> Get 3 recommendation letters
+            </div>
+          </div>
+        </div>
+
+        <div class="section-label">Projects</div>
+        <div class="card">
+          <div class="project-card">
+            <div class="project-icon" style="background:var(--color-primary-light); color:var(--color-primary);">
+              <i data-lucide="file-text"></i>
+            </div>
+            <div class="project-info">
+              <div class="project-name">College Applications</div>
+              <div class="project-status">5 of 8 tasks done</div>
+            </div>
+            <span class="project-pct" style="color:var(--color-primary);">63%</span>
+          </div>
+          <div style="padding:6px 0 2px 52px;">
+            <div class="progress-bar"><div class="progress-fill fill-blue" data-width="63%"></div></div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="project-card">
+            <div class="project-icon" style="background:var(--color-purple-light); color:var(--color-purple);">
+              <i data-lucide="code-2"></i>
+            </div>
+            <div class="project-info">
+              <div class="project-name">Personal Portfolio Website</div>
+              <div class="project-status">Design phase</div>
+            </div>
+            <span class="project-pct" style="color:var(--color-purple);">25%</span>
+          </div>
+          <div style="padding:6px 0 2px 52px;">
+            <div class="progress-bar"><div class="progress-fill fill-purple" data-width="25%"></div></div>
+          </div>
+        </div>
+
+        <div style="height:16px;"></div>
+      </div>
+
+      <!-- HEALTH SCREEN -->
+      <div class="screen" id="screen-health">
+        <div class="screen-header">
+          <button class="back-btn" onclick="goBack()"><i data-lucide="arrow-left"></i></button>
+          <span class="screen-title">Health & Wellness</span>
+        </div>
+
+        <div class="section-label">Today's Snapshot</div>
+        <!-- Empty state for health (shown when no data) -->
+        <div class="empty-state" id="healthEmptyState" style="display:none;">
+          <div class="empty-state-icon"><i data-lucide="heart-pulse"></i></div>
+          <h3 class="empty-state-title">No health data yet</h3>
+          <p class="empty-state-text">Start logging your sleep, workouts, and mood to see your health trends</p>
+          <button class="empty-state-action" onclick="openModal()">Log Your First Entry</button>
+        </div>
+        <div class="health-snapshot">
+          <div class="snap-item">
+            <div class="snap-icon" style="color:var(--color-primary);"><i data-lucide="moon"></i></div>
+            <div class="snap-value num">7h 15m</div>
+            <div class="snap-label">Sleep</div>
+          </div>
+          <div class="snap-item">
+            <div class="snap-icon" style="color:var(--color-success);"><i data-lucide="flame"></i></div>
+            <div class="snap-value num">45min</div>
+            <div class="snap-label">Activity</div>
+          </div>
+          <div class="snap-item">
+            <div class="snap-icon" style="color:var(--color-celebration);"><i data-lucide="smile"></i></div>
+            <div class="snap-value">Good</div>
+            <div class="snap-label">Mood</div>
+          </div>
+          <div class="snap-item">
+            <div class="snap-icon" style="color:var(--color-primary);"><i data-lucide="droplets"></i></div>
+            <div class="snap-value num">4/8</div>
+            <div class="snap-label">Water</div>
+          </div>
+        </div>
+
+        <div class="section-label">Sleep — Last 7 Days</div>
+        <div class="card">
+          <div class="sleep-chart" id="sleepChart">
+            <div class="sleep-bar-wrap"><div class="sleep-bar" data-height="70%"></div><span class="sleep-label">Mon</span></div>
+            <div class="sleep-bar-wrap"><div class="sleep-bar" data-height="85%"></div><span class="sleep-label">Tue</span></div>
+            <div class="sleep-bar-wrap"><div class="sleep-bar" data-height="60%"></div><span class="sleep-label">Wed</span></div>
+            <div class="sleep-bar-wrap"><div class="sleep-bar" data-height="78%"></div><span class="sleep-label">Thu</span></div>
+            <div class="sleep-bar-wrap"><div class="sleep-bar" data-height="90%"></div><span class="sleep-label">Fri</span></div>
+            <div class="sleep-bar-wrap"><div class="sleep-bar" data-height="95%"></div><span class="sleep-label">Sat</span></div>
+            <div class="sleep-bar-wrap"><div class="sleep-bar" data-height="82%"></div><span class="sleep-label">Sun</span></div>
+          </div>
+        </div>
+
+        <div class="section-label">Exercise — <span class="num">2/4</span> This Week</div>
+        <div class="card">
+          <div class="progress-bar" style="margin-bottom:var(--space-3);"><div class="progress-fill fill-green" data-width="50%"></div></div>
+          <div class="workout-item">
+            <div class="workout-dot" style="background:var(--color-success);"></div>
+            <div class="workout-info">
+              <div class="workout-name">Morning Run</div>
+              <div class="workout-detail">5.2 km · 28 min</div>
+            </div>
+            <span class="workout-date">Today</span>
+          </div>
+          <div class="workout-item">
+            <div class="workout-dot" style="background:var(--color-success);"></div>
+            <div class="workout-info">
+              <div class="workout-name">Weight Training</div>
+              <div class="workout-detail">Upper body · 45 min</div>
+            </div>
+            <span class="workout-date">Nov 7</span>
+          </div>
+        </div>
+
+        <div class="section-label">Mental Wellness</div>
+        <div class="card">
+          <div style="display:flex; justify-content:space-between; margin-bottom:var(--space-3);">
+            <div>
+              <div style="font-size:12px; color:var(--color-text-muted);">Mood</div>
+              <div style="font-size:16px; font-weight:600; color:var(--color-celebration);">😊 Good</div>
+            </div>
+            <div style="text-align:right;">
+              <div style="font-size:12px; color:var(--color-text-muted);">Stress Level</div>
+              <div class="num" style="font-size:16px; font-weight:600;">5/10</div>
+            </div>
+          </div>
+          <div class="progress-bar"><div class="progress-fill fill-orange" data-width="50%"></div></div>
+        </div>
+
+        <div style="height:16px;"></div>
+      </div>
+
+      <!-- FINANCE SCREEN -->
+      <div class="screen" id="screen-finance">
+        <div class="screen-header">
+          <button class="back-btn" onclick="goBack()"><i data-lucide="arrow-left"></i></button>
+          <span class="screen-title">Finance</span>
+        </div>
+
+        <div class="card" style="text-align:center;">
+          <!-- Empty state for finance (shown when no data) -->
+          <div class="empty-state" id="financeEmptyState" style="display:none;">
+            <div class="empty-state-icon"><i data-lucide="wallet"></i></div>
+            <h3 class="empty-state-title">No budget set</h3>
+            <p class="empty-state-text">Set your monthly budget and start tracking expenses to stay on top of your finances</p>
+            <button class="empty-state-action" onclick="openModal()">Add an Expense</button>
+          </div>
+          <div style="font-size:12px; color:var(--color-text-muted); margin-bottom:var(--space-2);">November Budget</div>
+          <div class="budget-ring">
+            <svg viewBox="0 0 120 120">
+              <circle class="bg-ring" cx="60" cy="60" r="54" />
+              <circle class="fill-ring" cx="60" cy="60" r="54" data-pct="52" />
+            </svg>
+            <div class="budget-center">
+              <div class="budget-amt">$234.50</div>
+              <div class="budget-of">of $450</div>
+            </div>
+          </div>
+          <div style="display:flex; justify-content:center; gap:var(--space-6); font-size:12px;">
+            <div><span style="color:var(--color-warning); font-weight:600;">52%</span> <span style="color:var(--color-text-muted);">used</span></div>
+            <div><span style="color:var(--color-success); font-weight:600;">$215.50</span> <span style="color:var(--color-text-muted);">left</span></div>
+          </div>
+        </div>
+
+        <div class="section-label">Spending by Category</div>
+        <div class="card">
+          <div class="spending-bar">
+            <span class="spending-cat">Food</span>
+            <div class="spending-track"><div class="spending-fill" data-width="38%" style="background:var(--color-primary);"></div></div>
+            <span class="spending-val">$89.50</span>
+          </div>
+          <div class="spending-bar">
+            <span class="spending-cat">Entertainment</span>
+            <div class="spending-track"><div class="spending-fill" data-width="28%" style="background:var(--color-purple);"></div></div>
+            <span class="spending-val">$65.00</span>
+          </div>
+          <div class="spending-bar">
+            <span class="spending-cat">Transport</span>
+            <div class="spending-track"><div class="spending-fill" data-width="19%" style="background:var(--color-success);"></div></div>
+            <span class="spending-val">$45.00</span>
+          </div>
+          <div class="spending-bar">
+            <span class="spending-cat">Shopping</span>
+            <div class="spending-track"><div class="spending-fill" data-width="15%" style="background:var(--color-warning);"></div></div>
+            <span class="spending-val">$35.00</span>
+          </div>
+        </div>
+
+        <div class="section-label">Recent Transactions</div>
+        <div class="card">
+          <div class="transaction-item">
+            <div class="tx-icon" style="background:var(--color-primary-light); color:var(--color-primary);"><i data-lucide="utensils"></i></div>
+            <div class="tx-info">
+              <div class="tx-name">Chipotle</div>
+              <div class="tx-date">Today, 12:30 PM</div>
+            </div>
+            <span class="tx-amount">-$12.50</span>
+          </div>
+          <div class="transaction-item">
+            <div class="tx-icon" style="background:var(--color-purple-light); color:var(--color-purple);"><i data-lucide="film"></i></div>
+            <div class="tx-info">
+              <div class="tx-name">Netflix</div>
+              <div class="tx-date">Nov 8</div>
+            </div>
+            <span class="tx-amount">-$15.99</span>
+          </div>
+          <div class="transaction-item">
+            <div class="tx-icon" style="background:var(--color-success-light); color:var(--color-success);"><i data-lucide="bus"></i></div>
+            <div class="tx-info">
+              <div class="tx-name">Bus Pass</div>
+              <div class="tx-date">Nov 7</div>
+            </div>
+            <span class="tx-amount">-$45.00</span>
+          </div>
+          <div class="transaction-item">
+            <div class="tx-icon" style="background:var(--color-warning-light); color:var(--color-warning);"><i data-lucide="shopping-bag"></i></div>
+            <div class="tx-info">
+              <div class="tx-name">Amazon</div>
+              <div class="tx-date">Nov 6</div>
+            </div>
+            <span class="tx-amount">-$28.95</span>
+          </div>
+        </div>
+
+        <div class="section-label">Savings Goals</div>
+        <div class="card">
+          <div class="savings-item">
+            <div class="savings-header">
+              <span class="savings-name">💻 Laptop</span>
+              <span class="savings-amt num">$680 / $1,200</span>
+            </div>
+            <div class="progress-bar"><div class="progress-fill fill-blue" data-width="57%"></div></div>
+          </div>
+          <div class="savings-item">
+            <div class="savings-header">
+              <span class="savings-name">🌴 Spring Break</span>
+              <span class="savings-amt num">$220 / $600</span>
+            </div>
+            <div class="progress-bar"><div class="progress-fill fill-green" data-width="37%"></div></div>
+          </div>
+        </div>
+
+        <div style="height:16px;"></div>
+      </div>
+
+      <!-- INSIGHTS SCREEN -->
+      <div class="screen" id="screen-insights">
+        <div class="app-bar">
+          <div class="app-bar-left">
+            <span class="screen-title" style="padding:0;">Insights</span>
+          </div>
+        </div>
+
+        <div class="section-label">AI-Discovered Patterns</div>
+        <div class="card pattern-card">
+          <div class="pattern-type" style="color:var(--color-primary);">📊 Performance Correlation</div>
+          <div class="pattern-desc">3 focused study sessions in AP Biology directly correlated with a <strong>+12% improvement</strong> on practice test scores.</div>
+          <div class="pattern-impact" style="color:var(--color-success);">↑ High confidence</div>
+        </div>
+
+        <div class="card pattern-card">
+          <div class="pattern-type" style="color:var(--color-purple);">🌙 Sleep-Productivity Connection</div>
+          <div class="pattern-desc">Nights with less than 7 hours of sleep reduced next-day productivity by <strong>23%</strong> and task completion by <strong>15%</strong>.</div>
+          <div class="pattern-impact" style="color:var(--color-warning);">⚡ Actionable</div>
+        </div>
+
+        <div class="card pattern-card">
+          <div class="pattern-type" style="color:var(--color-success);">🤝 Social-Wellbeing Pattern</div>
+          <div class="pattern-desc">Weeks with 3+ social events showed <strong>18% higher</strong> mood ratings and better stress management.</div>
+          <div class="pattern-impact" style="color:var(--color-success);">↑ High confidence</div>
+        </div>
+
+        <div class="section-label">Peak Performance Times</div>
+        <div class="card">
+          <div class="heatmap-grid" id="heatmap">
+            <!-- generated by JS -->
+          </div>
+        </div>
+
+        <div class="section-label">Weekly Summary</div>
+        <div class="card">
+          <div class="weekly-stat">
+            <span class="ws-label">Study Hours</span>
+            <span class="ws-value">18.5h</span>
+          </div>
+          <div class="weekly-stat">
+            <span class="ws-label">Tasks Completed</span>
+            <span class="ws-value">14</span>
+          </div>
+          <div class="weekly-stat">
+            <span class="ws-label">Avg. Sleep</span>
+            <span class="ws-value">7.2h</span>
+          </div>
+          <div class="weekly-stat">
+            <span class="ws-label">Mood Average</span>
+            <span class="ws-value">Good</span>
+          </div>
+          <div class="weekly-stat">
+            <span class="ws-label">Active Streak</span>
+            <span class="ws-value" style="color:var(--color-celebration);">47 days 🔥</span>
+          </div>
+        </div>
+
+        <div style="height:16px;"></div>
+      </div>
+
+      <!-- PROFILE SCREEN -->
+      <div class="screen" id="screen-profile">
+        <div class="app-bar">
+          <div class="app-bar-left">
+            <span class="screen-title" style="padding:0;">Profile</span>
+          </div>
+          <div class="app-bar-right">
+            <button class="icon-btn" aria-label="Edit Profile" onclick="navigateTo('screen-profile-edit')"><i data-lucide="pencil"></i></button>
+            <button class="icon-btn" aria-label="Settings"><i data-lucide="settings"></i></button>
+          </div>
+        </div>
+
+        <div class="profile-header">
+          <div class="profile-avatar">V</div>
+          <div class="profile-name">Val</div>
+          <div class="profile-bio">High School Senior | Class of 2026</div>
+        </div>
+
+        <div class="stats-grid">
+          <div class="stat-card">
+            <div class="stat-num" style="color:var(--color-primary);">847</div>
+            <div class="stat-label">Activities Logged</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-num" style="color:var(--color-purple);">43</div>
+            <div class="stat-label">Insights</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-num" style="color:var(--color-celebration);">47</div>
+            <div class="stat-label">Day Streak 🔥</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-num" style="color:var(--color-success);">8</div>
+            <div class="stat-label">Active Goals</div>
+          </div>
+        </div>
+
+        <div class="section-label">Settings</div>
+        <div class="card">
+          <div class="setting-item">
+            <div class="setting-left">
+              <i data-lucide="bell"></i>
+              <span class="setting-name">Notifications</span>
+            </div>
+            <button class="toggle-switch on" onclick="this.classList.toggle('on')" aria-label="Toggle notifications" aria-pressed="true"></button>
+          </div>
+          <div class="setting-item">
+            <div class="setting-left">
+              <i data-lucide="moon"></i>
+              <span class="setting-name">Dark Mode</span>
+            </div>
+            <button class="toggle-switch" id="darkModeToggle" onclick="toggleDarkMode()" aria-label="Toggle dark mode" aria-pressed="false"></button>
+          </div>
+          <button class="setting-item" style="width:100%; text-align:left; border:none; background:none; font-family:var(--font-body);" onclick="navigateTo('screen-privacy')">
+            <div class="setting-left">
+              <i data-lucide="shield"></i>
+              <span class="setting-name">Privacy</span>
+            </div>
+            <i data-lucide="chevron-right" style="width:18px; height:18px; color:var(--color-text-faint);"></i>
+          </button>
+          <button class="setting-item" style="width:100%; text-align:left; border:none; background:none; font-family:var(--font-body);" onclick="navigateTo('screen-help')">
+            <div class="setting-left">
+              <i data-lucide="help-circle"></i>
+              <span class="setting-name">Help &amp; Support</span>
+            </div>
+            <i data-lucide="chevron-right" style="width:18px; height:18px; color:var(--color-text-faint);"></i>
+          </button>
+          <button class="setting-item" style="width:100%; text-align:left; border:none; background:none; font-family:var(--font-body);" onclick="navigateTo('screen-notifications')">
+            <div class="setting-left">
+              <i data-lucide="bell-ring"></i>
+              <span class="setting-name">Notification Preferences</span>
+            </div>
+            <i data-lucide="chevron-right" style="width:18px; height:18px; color:var(--color-text-faint);"></i>
+          </button>
+          <button class="setting-item" style="width:100%; text-align:left; border:none; background:none; font-family:var(--font-body); cursor:pointer;" onclick="openLogoutModal()">
+            <div class="setting-left">
+              <i data-lucide="log-out"></i>
+              <span class="setting-name" style="color:var(--color-error);">Log Out</span>
+            </div>
+            <i data-lucide="chevron-right" style="width:18px; height:18px; color:var(--color-text-faint);"></i>
+          </button>
+        </div>
+
+        <div style="height:16px;"></div>
+      </div>
+
+      <!-- PRIVACY SETTINGS SCREEN -->
+      <div class="screen" id="screen-privacy">
+        <div class="screen-header">
+          <button class="back-btn" onclick="goBack()" aria-label="Go back"><i data-lucide="arrow-left"></i></button>
+          <span class="screen-title">Privacy Settings</span>
+        </div>
+
+        <div class="settings-section">
+          <div class="section-label">Visibility</div>
+          <div class="card">
+            <div class="setting-item">
+              <i data-lucide="eye" style="width:20px;height:20px;color:var(--color-text-muted);"></i>
+              <div class="setting-label-wrap">
+                <div class="setting-name">Profile Visibility</div>
+                <div class="setting-desc">Make your profile visible to others</div>
+              </div>
+              <button class="toggle-switch on" aria-label="Toggle profile visibility" aria-pressed="true" onclick="this.classList.toggle('on'); this.setAttribute('aria-pressed', this.classList.contains('on'))"></button>
+            </div>
+            <div class="setting-item">
+              <i data-lucide="share-2" style="width:20px;height:20px;color:var(--color-text-muted);"></i>
+              <div class="setting-label-wrap">
+                <div class="setting-name">Data Sharing</div>
+                <div class="setting-desc">Share anonymous usage data to improve the app</div>
+              </div>
+              <button class="toggle-switch on" aria-label="Toggle data sharing" aria-pressed="true" onclick="this.classList.toggle('on'); this.setAttribute('aria-pressed', this.classList.contains('on'))"></button>
+            </div>
+            <div class="setting-item">
+              <i data-lucide="activity" style="width:20px;height:20px;color:var(--color-text-muted);"></i>
+              <div class="setting-label-wrap">
+                <div class="setting-name">Activity Status</div>
+                <div class="setting-desc">Show when you're active in the app</div>
+              </div>
+              <button class="toggle-switch" aria-label="Toggle activity status" aria-pressed="false" onclick="this.classList.toggle('on'); this.setAttribute('aria-pressed', this.classList.contains('on'))"></button>
+            </div>
+          </div>
+        </div>
+
+        <div class="settings-section">
+          <div class="section-label">Data</div>
+          <div class="card" style="padding:var(--space-4);">
+            <button class="auth-btn auth-btn-outline" style="margin-bottom:12px;" onclick="showToast('Your data export will be emailed to you shortly.', 'success')">
+              <i data-lucide="download" style="width:18px;height:18px;"></i> Download My Data
+            </button>
+            <button class="auth-btn" style="background:transparent; color:var(--color-error); border:1.5px solid var(--color-error);" onclick="openDeleteModal()">
+              <i data-lucide="trash-2" style="width:18px;height:18px;"></i> Delete My Account
+            </button>
+          </div>
+        </div>
+
+        <div style="height:16px;"></div>
+      </div>
+
+      <!-- HELP & SUPPORT SCREEN -->
+      <div class="screen" id="screen-help">
+        <div class="screen-header">
+          <button class="back-btn" onclick="goBack()" aria-label="Go back"><i data-lucide="arrow-left"></i></button>
+          <span class="screen-title">Help &amp; Support</span>
+        </div>
+
+        <div class="section-label">FAQs</div>
+        <div class="card" style="padding:0; overflow:hidden;">
+          <div class="accordion-item" id="faq1">
+            <button class="accordion-header" onclick="toggleAccordion('faq1')" aria-expanded="false">
+              <span>How does ZenSensei track my data?</span>
+              <i data-lucide="chevron-down" class="accordion-icon"></i>
+            </button>
+            <div class="accordion-body">ZenSensei lets you log activities manually or via the Quick Log AI parser. Your data is stored securely and used to generate personalized insights. We never sell your data to third parties.</div>
+          </div>
+          <div class="accordion-item" id="faq2">
+            <button class="accordion-header" onclick="toggleAccordion('faq2')" aria-expanded="false">
+              <span>Can I export my data?</span>
+              <i data-lucide="chevron-down" class="accordion-icon"></i>
+            </button>
+            <div class="accordion-body">Yes! Go to Privacy Settings and tap "Download My Data". We'll prepare a full export of your account data and email it to you within 24 hours.</div>
+          </div>
+          <div class="accordion-item" id="faq3">
+            <button class="accordion-header" onclick="toggleAccordion('faq3')" aria-expanded="false">
+              <span>How do I reset my streak?</span>
+              <i data-lucide="chevron-down" class="accordion-icon"></i>
+            </button>
+            <div class="accordion-body">Streaks are calculated automatically based on your daily logging activity. If you miss a day, the streak resets. There's currently no way to manually restore a streak, but we're considering this for a future update.</div>
+          </div>
+          <div class="accordion-item" id="faq4">
+            <button class="accordion-header" onclick="toggleAccordion('faq4')" aria-expanded="false">
+              <span>Is my data backed up?</span>
+              <i data-lucide="chevron-down" class="accordion-icon"></i>
+            </button>
+            <div class="accordion-body">All data is automatically backed up to our secure cloud servers. Your progress is safe even if you switch devices or reinstall the app — just log in with your account.</div>
+          </div>
+        </div>
+
+        <div class="section-label">Contact</div>
+        <div class="card">
+          <div class="setting-item" style="padding:var(--space-3) 0; cursor:default;">
+            <i data-lucide="mail" style="width:20px;height:20px;color:var(--color-primary); flex-shrink:0;"></i>
+            <div style="flex:1; margin-left:var(--space-3);">
+              <div class="setting-name">Contact Support</div>
+              <a href="mailto:support@zensensei.app" style="font-size:13px; color:var(--color-primary); text-decoration:none;">support@zensensei.app</a>
+            </div>
+          </div>
+        </div>
+
+        <div class="section-label">Report a Bug</div>
+        <div class="card bug-form">
+          <label class="auth-label" for="bugDesc" style="margin-bottom:8px; display:block;">Describe the issue</label>
+          <textarea id="bugDesc" placeholder="What happened? Steps to reproduce…" rows="4"></textarea>
+          <button class="auth-btn auth-btn-primary" style="margin-top:12px; height:44px;" onclick="submitBugReport()">
+            Send Report
+          </button>
+        </div>
+
+        <div class="section-label">About</div>
+        <div class="card">
+          <div class="setting-item" style="padding:var(--space-3) 0; cursor:default;">
+            <i data-lucide="info" style="width:20px;height:20px;color:var(--color-text-muted); flex-shrink:0;"></i>
+            <div style="flex:1; margin-left:var(--space-3);">
+              <div class="setting-name">App Version</div>
+              <div style="font-size:13px; color:var(--color-text-muted);">v1.0.0</div>
+            </div>
+          </div>
+        </div>
+
+        <div style="height:16px;"></div>
+      </div>
+
+      <!-- NOTIFICATION PREFERENCES SCREEN -->
+      <div class="screen" id="screen-notifications">
+        <div class="screen-header">
+          <button class="back-btn" onclick="goBack()" aria-label="Go back"><i data-lucide="arrow-left"></i></button>
+          <span class="screen-title">Notifications</span>
+        </div>
+
+        <div class="settings-section">
+          <div class="section-label">Push Notifications</div>
+          <div class="card">
+            <div class="setting-item">
+              <i data-lucide="bell" style="width:20px;height:20px;color:var(--color-text-muted);"></i>
+              <div class="setting-label-wrap">
+                <div class="setting-name">Push Notifications</div>
+                <div class="setting-desc">Master toggle for all push notifications</div>
+              </div>
+              <button class="toggle-switch on" id="masterPushToggle" aria-label="Toggle push notifications" aria-pressed="true" onclick="toggleMasterPush(this)"></button>
+            </div>
+          </div>
+        </div>
+
+        <div class="settings-section">
+          <div class="section-label">Categories</div>
+          <div class="card">
+            <div class="setting-item">
+              <i data-lucide="target" style="width:20px;height:20px;color:var(--color-text-muted);"></i>
+              <div class="setting-label-wrap"><div class="setting-name">Goals &amp; Tasks</div></div>
+              <button class="toggle-switch on" aria-label="Toggle goals and tasks notifications" aria-pressed="true" onclick="this.classList.toggle('on'); this.setAttribute('aria-pressed', this.classList.contains('on'))"></button>
+            </div>
+            <div class="setting-item">
+              <i data-lucide="heart-pulse" style="width:20px;height:20px;color:var(--color-text-muted);"></i>
+              <div class="setting-label-wrap"><div class="setting-name">Health Reminders</div></div>
+              <button class="toggle-switch on" aria-label="Toggle health reminders" aria-pressed="true" onclick="this.classList.toggle('on'); this.setAttribute('aria-pressed', this.classList.contains('on'))"></button>
+            </div>
+            <div class="setting-item">
+              <i data-lucide="wallet" style="width:20px;height:20px;color:var(--color-text-muted);"></i>
+              <div class="setting-label-wrap"><div class="setting-name">Financial Updates</div></div>
+              <button class="toggle-switch" aria-label="Toggle financial updates" aria-pressed="false" onclick="this.classList.toggle('on'); this.setAttribute('aria-pressed', this.classList.contains('on'))"></button>
+            </div>
+            <div class="setting-item">
+              <i data-lucide="users" style="width:20px;height:20px;color:var(--color-text-muted);"></i>
+              <div class="setting-label-wrap"><div class="setting-name">Social Updates</div></div>
+              <button class="toggle-switch" aria-label="Toggle social updates" aria-pressed="false" onclick="this.classList.toggle('on'); this.setAttribute('aria-pressed', this.classList.contains('on'))"></button>
+            </div>
+            <div class="setting-item">
+              <i data-lucide="sparkles" style="width:20px;height:20px;color:var(--color-text-muted);"></i>
+              <div class="setting-label-wrap"><div class="setting-name">AI Insights</div></div>
+              <button class="toggle-switch on" aria-label="Toggle AI insights" aria-pressed="true" onclick="this.classList.toggle('on'); this.setAttribute('aria-pressed', this.classList.contains('on'))"></button>
+            </div>
+          </div>
+        </div>
+
+        <div class="settings-section">
+          <div class="section-label">Quiet Hours</div>
+          <div class="card" style="padding:var(--space-4);">
+            <div class="time-row">
+              <label for="quietFrom">From</label>
+              <input class="time-input" id="quietFrom" type="time" value="22:00">
+            </div>
+            <div class="time-row">
+              <label for="quietTo">To</label>
+              <input class="time-input" id="quietTo" type="time" value="07:00">
+            </div>
+          </div>
+        </div>
+
+        <div class="settings-section">
+          <div class="section-label">Email</div>
+          <div class="card">
+            <div class="setting-item">
+              <i data-lucide="mail" style="width:20px;height:20px;color:var(--color-text-muted);"></i>
+              <div class="setting-label-wrap">
+                <div class="setting-name">Email Notifications</div>
+                <div class="setting-desc">Receive weekly summaries and alerts by email</div>
+              </div>
+              <button class="toggle-switch on" aria-label="Toggle email notifications" aria-pressed="true" onclick="this.classList.toggle('on'); this.setAttribute('aria-pressed', this.classList.contains('on'))"></button>
+            </div>
+          </div>
+        </div>
+
+        <div style="height:16px;"></div>
+      </div>
+
+      <!-- TERMS OF SERVICE SCREEN -->
+      <div class="screen" id="screen-terms">
+        <div class="screen-header">
+          <button class="back-btn" onclick="goBack()" aria-label="Go back"><i data-lucide="arrow-left"></i></button>
+          <span class="screen-title">Terms of Service</span>
+        </div>
+        <div class="text-screen-body">
+          <p class="text-screen-intro">Last updated: January 1, 2026</p>
+          <h2>Terms of Use</h2>
+          <p>By accessing or using ZenSensei, you agree to be bound by these Terms of Service. If you do not agree to these terms, please do not use the application.</p>
+          <h2>User Responsibilities</h2>
+          <p>You are responsible for maintaining the confidentiality of your account credentials and for all activity that occurs under your account. You agree to:</p>
+          <ul>
+            <li>Provide accurate and truthful information</li>
+            <li>Not use the service for any unlawful purpose</li>
+            <li>Not attempt to circumvent any security features</li>
+            <li>Not share your account with others</li>
+          </ul>
+          <h2>Data Collection</h2>
+          <p>ZenSensei collects data you provide directly, such as health metrics, academic records, and financial information. This data is used solely to provide and improve the service. See our Privacy Policy for full details.</p>
+          <h2>Intellectual Property</h2>
+          <p>All content, features, and functionality of ZenSensei — including but not limited to text, graphics, logos, and software — are owned by ZenSensei Inc. and are protected by intellectual property laws.</p>
+          <h2>Termination</h2>
+          <p>We reserve the right to suspend or terminate your account at any time if you violate these Terms. You may also delete your account at any time from the Privacy Settings screen.</p>
+          <h2>Limitation of Liability</h2>
+          <p>ZenSensei is provided "as is" without warranties of any kind. We are not liable for any indirect, incidental, or consequential damages arising from your use of the service. The insights provided by our AI are for informational purposes only and should not replace professional advice.</p>
+        </div>
+      </div>
+
+      <!-- PRIVACY POLICY SCREEN -->
+      <div class="screen" id="screen-privacy-policy">
+        <div class="screen-header">
+          <button class="back-btn" onclick="goBack()" aria-label="Go back"><i data-lucide="arrow-left"></i></button>
+          <span class="screen-title">Privacy Policy</span>
+        </div>
+        <div class="text-screen-body">
+          <p class="text-screen-intro">Last updated: January 1, 2026</p>
+          <h2>Information We Collect</h2>
+          <p>We collect information you provide when creating an account (name, email), data you log within the app (health metrics, academic records, expenses, goals), and usage data (features used, session duration).</p>
+          <h2>How We Use It</h2>
+          <p>Your data is used to:</p>
+          <ul>
+            <li>Power AI-generated insights and pattern detection</li>
+            <li>Provide progress tracking and goal management</li>
+            <li>Improve and personalize your experience</li>
+            <li>Send notifications and alerts you've enabled</li>
+          </ul>
+          <h2>Data Sharing</h2>
+          <p>We do not sell your personal data. We may share anonymized, aggregated data with research partners. We use trusted third-party services for cloud storage and authentication, all bound by strict data processing agreements.</p>
+          <h2>Data Retention</h2>
+          <p>We retain your data for as long as your account is active. If you delete your account, your data is permanently removed within 30 days, except where legally required to retain it.</p>
+          <h2>Your Rights (GDPR/CCPA)</h2>
+          <p>Depending on your location, you may have the right to access, correct, or delete your personal data; object to processing; or request data portability. To exercise these rights, visit Privacy Settings or contact us at privacy@zensensei.app.</p>
+          <h2>Contact</h2>
+          <p>Questions about this policy? Contact our Data Protection Officer at <a href="mailto:privacy@zensensei.app" style="color:var(--color-primary);">privacy@zensensei.app</a>.</p>
+        </div>
+      </div>
+
+      <!-- PROFILE EDIT SCREEN -->
+      <div class="screen" id="screen-profile-edit">
+        <div class="screen-header">
+          <button class="back-btn" onclick="goBack()" aria-label="Go back"><i data-lucide="arrow-left"></i></button>
+          <span class="screen-title">Edit Profile</span>
+        </div>
+
+        <div style="display:flex; justify-content:center; padding:var(--space-4) 0;">
+          <div class="profile-avatar">V</div>
+        </div>
+
+        <div class="edit-field">
+          <label class="edit-label" for="editName">Full Name</label>
+          <input class="edit-input" id="editName" type="text" value="Val" autocomplete="name">
+        </div>
+
+        <div class="edit-field">
+          <label class="edit-label" for="editEmail">Email</label>
+          <div class="edit-input-row">
+            <input class="edit-input" id="editEmail" type="email" value="val@example.com" disabled autocomplete="email">
+            <button class="edit-change-link" onclick="showToast('Email change link sent to your inbox.', 'info')">Change</button>
+          </div>
+        </div>
+
+        <div class="edit-field">
+          <label class="edit-label" for="editBio">Bio</label>
+          <input class="edit-input" id="editBio" type="text" value="High School Senior | Class of 2026" placeholder="Tell us about yourself">
+        </div>
+
+        <div class="edit-actions">
+          <button class="btn-cancel" onclick="goBack()">Cancel</button>
+          <button class="btn-save" onclick="saveProfile()">Save Changes</button>
+        </div>
+
+        <div style="height:16px;"></div>
+      </div>
+
+      <!-- RELATIONSHIPS SCREEN (Coming Soon) -->
+      <div class="screen" id="screen-relationships">
+        <div class="screen-header">
+          <button class="back-btn" onclick="goBack()" aria-label="Go back"><i data-lucide="arrow-left"></i></button>
+          <span class="screen-title">Relationships</span>
+        </div>
+        <div class="coming-soon-wrap">
+          <div class="coming-soon-icon"><i data-lucide="users"></i></div>
+          <div class="coming-soon-title">Coming Soon</div>
+          <div class="coming-soon-desc">Track your social connections, plan events, and understand how relationships impact your wellbeing. This feature is under development.</div>
+        </div>
+      </div>
+
+      <!-- PROJECTS SCREEN (Coming Soon) -->
+      <div class="screen" id="screen-projects">
+        <div class="screen-header">
+          <button class="back-btn" onclick="goBack()" aria-label="Go back"><i data-lucide="arrow-left"></i></button>
+          <span class="screen-title">Projects</span>
+        </div>
+        <div class="coming-soon-wrap">
+          <div class="coming-soon-icon"><i data-lucide="folder-kanban"></i></div>
+          <div class="coming-soon-title">Coming Soon</div>
+          <div class="coming-soon-desc">Manage your projects with Kanban boards, milestones, and progress tracking. Launching in the next update.</div>
+        </div>
+      </div>
+
+    </div>
+
+      <!-- ==================== AUTH SCREENS ==================== -->
+
+      <!-- LOGIN SCREEN -->
+      <div class="screen auth-screen" id="screen-login">
+        <div class="auth-body">
+          <div class="auth-logo-wrap">
+            <div class="auth-logo">ZenSensei</div>
+            <div class="auth-tagline">Your AI-powered life assistant</div>
+          </div>
+
+          <div class="auth-heading">Welcome back</div>
+          <div class="auth-subheading">Sign in to continue your journey</div>
+
+          <div class="auth-error-msg" id="loginError">Invalid email or password. Please try again.</div>
+
+          <div class="auth-field">
+            <label class="auth-label" for="loginEmail">Email</label>
+            <input class="auth-input" id="loginEmail" type="email" placeholder="you@example.com" required autocomplete="email">
+            <div class="auth-field-msg" id="loginEmailMsg"></div>
+          </div>
+
+          <div class="auth-field">
+            <label class="auth-label" for="loginPassword">Password</label>
+            <input class="auth-input auth-input-pw" id="loginPassword" type="password" placeholder="••••••••" required autocomplete="current-password">
+            <button class="pw-toggle" type="button" onclick="togglePwVisibility('loginPassword', this)" aria-label="Show/hide password">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+            </button>
+          </div>
+
+          <div class="auth-checkbox-row" style="margin-bottom:20px;">
+            <input class="auth-checkbox" type="checkbox" id="rememberMe">
+            <label class="auth-checkbox-label" for="rememberMe">Remember me</label>
+          </div>
+
+          <button class="auth-btn auth-btn-primary" id="loginBtn" onclick="handleLogin()">Log In</button>
+          <div class="auth-forgot"><button class="auth-link" onclick="showAuthScreen('screen-forgot')">Forgot password?</button></div>
+
+          <div class="auth-divider">or</div>
+
+          <button class="auth-btn auth-btn-outline" style="margin-bottom:10px;" onclick="handleSocialLogin(event, 'Google')">
+            <svg class="social-icon" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+              <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
+              <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
+              <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/>
+              <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
+            </svg>
+            Continue with Google
+          </button>
+
+          <button class="auth-btn auth-btn-outline" onclick="handleSocialLogin(event, 'Apple')">
+            <svg class="social-icon" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+              <path d="M17.05 20.28c-.98.95-2.05.8-3.08.35-1.09-.46-2.09-.48-3.24 0-1.44.62-2.2.44-3.06-.35C2.79 15.25 3.51 7.7 9.05 7.4c1.28.06 2.17.7 2.96.7.8 0 2.3-.86 3.87-.73 1.55.12 2.73.74 3.5 1.89-3.23 1.87-2.7 5.99.74 7.4-.73 1.84-1.68 3.66-3.07 4.62zM12.03 7.25c-.13-2.74 2.19-5 4.77-5.25.39 2.97-2.67 5.3-4.77 5.25z"/>
+            </svg>
+            Continue with Apple
+          </button>
+
+          <div class="auth-switch">Don't have an account? <button class="auth-link" onclick="showAuthScreen('screen-register')">Sign Up</button></div>
+        </div>
+      </div>
+
+      <!-- REGISTER SCREEN -->
+      <div class="screen auth-screen" id="screen-register">
+        <div class="auth-body">
+          <div class="auth-logo-wrap">
+            <div class="auth-logo">ZenSensei</div>
+          </div>
+
+          <div class="auth-heading">Create account</div>
+          <div class="auth-subheading">Start your journey to a balanced life</div>
+
+          <div class="auth-field">
+            <label class="auth-label" for="regName">Full Name</label>
+            <input class="auth-input" id="regName" type="text" placeholder="Your full name" autocomplete="name">
+          </div>
+
+          <div class="auth-field">
+            <label class="auth-label" for="regEmail">Email</label>
+            <input class="auth-input" id="regEmail" type="email" placeholder="you@example.com" oninput="validateRegEmail()" autocomplete="email">
+            <div class="auth-field-msg" id="regEmailMsg"></div>
+          </div>
+
+          <div class="auth-field">
+            <label class="auth-label" for="regPassword">Password</label>
+            <input class="auth-input auth-input-pw" id="regPassword" type="password" placeholder="Create a password" oninput="updatePwStrength()" autocomplete="new-password">
+            <button class="pw-toggle" type="button" onclick="togglePwVisibility('regPassword', this)" aria-label="Show/hide password">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+            </button>
+            <div class="pw-strength-bar"><div class="pw-strength-fill" id="pwStrengthFill"></div></div>
+            <div class="pw-strength-label" id="pwStrengthLabel"></div>
+            <div class="pw-requirements" id="pwRequirements">
+              <div class="pw-req" id="req-length">
+                <span class="pw-req-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></span>
+                At least 8 characters
+              </div>
+              <div class="pw-req" id="req-upper">
+                <span class="pw-req-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></span>
+                One uppercase letter
+              </div>
+              <div class="pw-req" id="req-lower">
+                <span class="pw-req-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></span>
+                One lowercase letter
+              </div>
+              <div class="pw-req" id="req-number">
+                <span class="pw-req-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></span>
+                One number
+              </div>
+              <div class="pw-req" id="req-special">
+                <span class="pw-req-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></span>
+                One special character
+              </div>
+            </div>
+          </div>
+
+          <div class="auth-field">
+            <label class="auth-label" for="regConfirm">Confirm Password</label>
+            <input class="auth-input auth-input-pw" id="regConfirm" type="password" placeholder="Repeat your password" oninput="validateConfirmPw()" autocomplete="new-password">
+            <button class="pw-toggle" type="button" onclick="togglePwVisibility('regConfirm', this)" aria-label="Show/hide password">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+            </button>
+            <div class="auth-field-msg" id="regConfirmMsg"></div>
+          </div>
+
+          <div class="auth-checkbox-row" style="margin-bottom:20px;">
+            <input class="auth-checkbox" type="checkbox" id="agreeTerms">
+            <label class="auth-checkbox-label" for="agreeTerms">
+              I agree to the <button class="auth-link" onclick="navigateTo('screen-terms')">Terms of Service</button> and <button class="auth-link" onclick="navigateTo('screen-privacy-policy')">Privacy Policy</button>
+            </label>
+          </div>
+
+          <button class="auth-btn auth-btn-primary" id="registerBtn" onclick="handleRegister()">Create Account</button>
+
+          <div class="auth-switch">Already have an account? <button class="auth-link" onclick="showAuthScreen('screen-login')">Log In</button></div>
+        </div>
+      </div>
+
+      <!-- FORGOT PASSWORD SCREEN -->
+      <div class="screen auth-screen" id="screen-forgot">
+        <div class="auth-body">
+          <button class="back-btn" style="margin-bottom:24px;" onclick="showAuthScreen('screen-login')">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" width="20" height="20"><polyline points="15 18 9 12 15 6"/></svg>
+          </button>
+
+          <!-- Form state -->
+          <div id="forgotFormState">
+            <div class="auth-heading">Forgot password?</div>
+            <div class="auth-subheading">Enter your email and we'll send you a reset link.</div>
+
+            <div class="auth-field">
+              <label class="auth-label" for="forgotEmail">Email</label>
+              <input class="auth-input" id="forgotEmail" type="email" placeholder="you@example.com" autocomplete="email">
+              <div class="auth-field-msg" id="forgotEmailMsg"></div>
+            </div>
+
+            <button class="auth-btn auth-btn-primary" id="forgotBtn" onclick="handleForgotPassword()">Send Reset Link</button>
+          </div>
+
+          <!-- Success state -->
+          <div class="auth-success-box" id="forgotSuccessState">
+            <div class="auth-email-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="4" width="20" height="16" rx="2"/><polyline points="2,4 12,13 22,4"/></svg>
+            </div>
+            <div class="auth-success-title">Check your email</div>
+            <div class="auth-success-desc" id="forgotSuccessDesc">We sent a password reset link to your email address.</div>
+            <button class="auth-btn auth-btn-primary" style="max-width:240px;" onclick="showAuthScreen('screen-login')">Back to Log In</button>
+            <div class="auth-resend" id="forgotResendWrap"></div>
+          </div>
+
+          <div class="auth-switch" style="margin-top:auto; padding-top:24px;"><button class="auth-link" onclick="showAuthScreen('screen-login')">Back to Log In</button></div>
+        </div>
+      </div>
+
+      <!-- EMAIL VERIFICATION SCREEN -->
+      <div class="screen auth-screen" id="screen-verify">
+        <div class="auth-body" style="align-items:center; text-align:center;">
+          <div style="flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center;">
+            <div class="auth-email-icon" id="verifyIcon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="4" width="20" height="16" rx="2"/><polyline points="2,4 12,13 22,4"/></svg>
+            </div>
+            <div class="auth-success-title">Verify your email</div>
+            <div class="auth-success-desc" id="verifyDesc">We sent a verification link to your email address.</div>
+
+            <button class="auth-btn auth-btn-primary" style="max-width:260px; margin-bottom:12px;" onclick="openEmailApp()">Open Email App</button>
+            <div class="auth-resend" id="verifyResendWrap"></div>
+          </div>
+
+          <div class="auth-switch"><button class="auth-link" onclick="showAuthScreen('screen-login')">Back to Log In</button></div>
+        </div>
+      </div>
+
+    <!-- Quick Log Modal -->
+    <div class="modal-overlay" id="logModal" role="dialog" aria-modal="true" aria-label="Quick Log">
+      <div class="modal-sheet">
+        <div class="modal-handle"></div>
+        <div class="modal-title">Quick Log</div>
+        <div class="log-grid">
+          <button class="log-btn" style="color:var(--color-primary);" onclick="closeModal()"><i data-lucide="book-open"></i><span>Academic</span></button>
+          <button class="log-btn" style="color:var(--color-success);" onclick="closeModal()"><i data-lucide="dumbbell"></i><span>Workout</span></button>
+          <button class="log-btn" style="color:var(--color-celebration);" onclick="closeModal()"><i data-lucide="smile"></i><span>Mood</span></button>
+          <button class="log-btn" style="color:var(--color-warning);" onclick="closeModal()"><i data-lucide="receipt"></i><span>Expense</span></button>
+          <button class="log-btn" style="color:var(--color-purple);" onclick="closeModal()"><i data-lucide="users"></i><span>Social</span></button>
+          <button class="log-btn" style="color:var(--color-text-muted);" onclick="closeModal()"><i data-lucide="sticky-note"></i><span>Note</span></button>
+          <button class="log-btn" style="color:var(--color-primary);" onclick="closeModal()"><i data-lucide="clock"></i><span>Time</span></button>
+          <button class="log-btn" style="color:var(--color-success);" onclick="closeModal()"><i data-lucide="trending-up"></i><span>Progress</span></button>
+          <button class="log-btn" style="color:var(--color-warning);" onclick="closeModal()"><i data-lucide="calendar"></i><span>Event</span></button>
+        </div>
+        <div class="log-input-wrap">
+          <input class="log-input" type="text" placeholder='Say it: "Studied calculus 45 min"'>
+        </div>
+        <div class="log-hint">AI will parse and categorize</div>
+      </div>
+    </div>
+
+
+    <!-- Logout Confirmation Modal -->
+    <div class="logout-modal-overlay" id="logoutModal" role="dialog" aria-modal="true" aria-labelledby="logoutModalTitle">
+      <div class="logout-modal-box">
+        <div class="logout-modal-title" id="logoutModalTitle">Log Out</div>
+        <div class="logout-modal-desc">Are you sure you want to log out of ZenSensei?</div>
+        <div class="logout-modal-actions">
+          <button class="auth-btn logout-btn-confirm" onclick="confirmLogout()">Log Out</button>
+          <button class="auth-btn logout-btn-cancel" onclick="closeLogoutModal()">Cancel</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Toast Container -->
+    <div class="toast-container" id="toastContainer" aria-live="polite" aria-atomic="false"></div>
+
+    <!-- Delete Account Confirmation Modal -->
+    <div class="delete-confirm-overlay" id="deleteAccountModal" role="dialog" aria-modal="true" aria-labelledby="deleteConfirmTitle">
+      <div class="delete-confirm-box">
+        <div class="delete-confirm-title" id="deleteConfirmTitle">Delete Account</div>
+        <div class="delete-confirm-desc">This action is permanent and cannot be undone. All your data will be erased. Type <strong>DELETE</strong> to confirm.</div>
+        <input class="delete-confirm-input" id="deleteConfirmInput" type="text" placeholder="Type DELETE here" autocomplete="off">
+        <button class="btn-delete-confirm" onclick="submitDeleteAccount()">Delete My Account</button>
+        <button class="btn-delete-cancel" onclick="closeDeleteModal()">Cancel</button>
+      </div>
+    </div>
+
+    <!-- Bottom Nav -->
+    <nav class="bottom-nav">
+      <button class="nav-item active" data-tab="screen-home" onclick="switchTab('screen-home')">
+        <i data-lucide="home"></i>
+        <span>Home</span>
+      </button>
+      <button class="nav-item" data-tab="screen-goals" onclick="switchTab('screen-goals')">
+        <i data-lucide="target"></i>
+        <span>Goals</span>
+      </button>
+      <button class="nav-item-log" onclick="openModal()" aria-label="Quick Log">
+        <i data-lucide="plus"></i>
+      </button>
+      <button class="nav-item" data-tab="screen-insights" onclick="switchTab('screen-insights')">
+        <i data-lucide="bar-chart-3"></i>
+        <span>Insights</span>
+      </button>
+      <button class="nav-item" data-tab="screen-profile" onclick="switchTab('screen-profile')">
+        <i data-lucide="user"></i>
+        <span>Profile</span>
+      </button>
+    </nav>
+
+  </div>
+</div>
+
+<script>
+// =========================
+// APP STATE
+// =========================
+let currentTheme = 'light';
+let currentScreen = 'screen-home';
+let screenHistory = ['screen-home'];
+
+// =========================
+// NAVIGATION
+// =========================
+function switchTab(screenId) {
+  currentScreen = screenId;
+  screenHistory = [screenId];
+  showScreen(screenId);
+  updateNav(screenId);
+  scrollToTop();
+}
+
+function navigateTo(screenId) {
+  screenHistory.push(screenId);
+  currentScreen = screenId;
+  showScreen(screenId);
+  updateNav(null);
+  scrollToTop();
+}
+
+function goBack() {
+  screenHistory.pop();
+  const prev = screenHistory[screenHistory.length - 1] || 'screen-home';
+  currentScreen = prev;
+  showScreen(prev, true);
+  updateNav(prev);
+  scrollToTop();
+}
+
+function showScreen(id, reverse) {
+  document.querySelectorAll('.screen').forEach(s => {
+    s.classList.remove('active');
+    s.style.animation = '';
+  });
+  const el = document.getElementById(id);
+  if (el) {
+    el.classList.add('active');
+    el.style.animation = reverse ? 'fadeInReverse 0.3s var(--ease)' : 'fadeIn 0.3s var(--ease)';
+    // Animate progress bars on this screen
+    requestAnimationFrame(() => animateProgressBars(el));
+  }
+}
+
+function updateNav(activeTab) {
+  document.querySelectorAll('.nav-item').forEach(n => {
+    n.classList.toggle('active', n.dataset.tab === activeTab);
+  });
+}
+
+function scrollToTop() {
+  document.getElementById('appContent').scrollTop = 0;
+}
+
+// =========================
+// MODAL
+// =========================
+function openModal() {
+  document.getElementById('logModal').classList.add('open');
+}
+function closeModal() {
+  document.getElementById('logModal').classList.remove('open');
+}
+document.getElementById('logModal').addEventListener('click', function(e) {
+  if (e.target === this) closeModal();
+});
+
+// =========================
+// DARK MODE
+// =========================
+function toggleDarkMode() {
+  currentTheme = currentTheme === 'light' ? 'dark' : 'light';
+  document.documentElement.setAttribute('data-theme', currentTheme);
+  const toggle = document.getElementById('darkModeToggle');
+  if (toggle) toggle.classList.toggle('on', currentTheme === 'dark');
+}
+
+// =========================
+// PROGRESS BAR ANIMATION
+// =========================
+function animateProgressBars(container) {
+  const root = container || document;
+  root.querySelectorAll('.progress-fill[data-width]').forEach(bar => {
+    bar.style.width = '0%';
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        bar.style.width = bar.dataset.width;
+      });
+    });
+  });
+
+  // Sleep bars
+  root.querySelectorAll('.sleep-bar[data-height]').forEach(bar => {
+    bar.style.height = '0';
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        bar.style.height = bar.dataset.height;
+      });
+    });
+  });
+
+  // Spending bars
+  root.querySelectorAll('.spending-fill[data-width]').forEach(bar => {
+    bar.style.width = '0%';
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        bar.style.width = bar.dataset.width;
+      });
+    });
+  });
+
+  // Budget ring
+  root.querySelectorAll('.fill-ring[data-pct]').forEach(ring => {
+    const circumference = 2 * Math.PI * 54;
+    const pct = parseFloat(ring.dataset.pct) / 100;
+    const offset = circumference * (1 - pct);
+    ring.style.strokeDashoffset = circumference;
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        ring.style.strokeDashoffset = offset;
+      });
+    });
+  });
+}
+
+// =========================
+// HEATMAP GENERATION
+// =========================
+function generateHeatmap() {
+  const container = document.getElementById('heatmap');
+  if (!container) return;
+
+  const days = ['', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+  const hours = ['8am', '10am', '12pm', '2pm', '4pm', '6pm', '8pm'];
+
+  // Header row
+  days.forEach(d => {
+    const el = document.createElement('div');
+    el.className = 'heatmap-label';
+    el.textContent = d;
+    el.style.justifyContent = d === '' ? 'flex-end' : 'center';
+    el.style.fontSize = '9px';
+    container.appendChild(el);
+  });
+
+  // Data (higher = more productive)
+  const data = [
+    [3,5,7,8,6,4,2],
+    [4,6,8,9,7,3,2],
+    [5,4,6,7,8,5,3],
+    [6,7,5,6,7,6,4],
+    [8,9,7,5,4,7,5],
+    [7,8,6,4,3,8,6],
+    [4,5,3,2,2,5,4],
+  ];
+
+  const getColor = (v, theme) => {
+    if (v <= 2) return theme === 'dark' ? 'rgba(59,130,246,0.05)' : 'rgba(59,130,246,0.05)';
+    if (v <= 4) return theme === 'dark' ? 'rgba(59,130,246,0.15)' : 'rgba(59,130,246,0.12)';
+    if (v <= 6) return theme === 'dark' ? 'rgba(59,130,246,0.3)' : 'rgba(59,130,246,0.25)';
+    if (v <= 8) return theme === 'dark' ? 'rgba(59,130,246,0.5)' : 'rgba(59,130,246,0.45)';
+    return theme === 'dark' ? 'rgba(59,130,246,0.7)' : 'rgba(59,130,246,0.65)';
+  };
+
+  hours.forEach((h, i) => {
+    const label = document.createElement('div');
+    label.className = 'heatmap-label';
+    label.textContent = h;
+    container.appendChild(label);
+    data[i].forEach(v => {
+      const cell = document.createElement('div');
+      cell.className = 'heatmap-cell';
+      cell.style.background = getColor(v, currentTheme);
+      cell.title = `${h}, ${days[data[i].indexOf(v) + 1]}: ${v}/10`;
+      container.appendChild(cell);
+    });
+  });
+}
+
+// =========================
+// INIT
+// =========================
+document.addEventListener('DOMContentLoaded', () => {
+  // Init Lucide icons
+  if (typeof lucide !== 'undefined') {
+    lucide.createIcons();
+  }
+
+  // Generate heatmap
+  generateHeatmap();
+
+  // Auth-gated startup: show login first, unless already authenticated
+  if (Auth.init()) {
+    // Already authenticated — go straight to app
+    showAppScreen('screen-home');
+    requestAnimationFrame(() => {
+      animateProgressBars(document.getElementById('screen-home'));
+    });
+  } else {
+    // Not authenticated — show login screen (hide chrome)
+    showAuthScreen('screen-login');
+  }
+});
+
+// =========================
+// AUTH STATE MANAGER
+// =========================
+const Auth = {
+  token: null,
+  user: null,
+  isAuthenticated() { return !!this.token; },
+  login(token, user) {
+    this.token = token;
+    this.user = user;
+    sessionStorage.setItem('zensensei_token', token);
+    if (user) sessionStorage.setItem('zensensei_user', JSON.stringify(user));
+  },
+  logout() {
+    this.token = null;
+    this.user = null;
+    sessionStorage.removeItem('zensensei_token');
+    sessionStorage.removeItem('zensensei_user');
+  },
+  init() {
+    this.token = sessionStorage.getItem('zensensei_token');
+    const stored = sessionStorage.getItem('zensensei_user');
+    if (stored) { try { this.user = JSON.parse(stored); } catch(e) {} }
+    return this.isAuthenticated();
+  }
+};
+
+// =========================
+// AUTH SCREEN NAVIGATION
+// =========================
+const AUTH_SCREENS = ['screen-login', 'screen-register', 'screen-forgot', 'screen-verify'];
+
+function showAuthScreen(id) {
+  // Hide all screens
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  // Show/hide shell chrome
+  const inner = document.querySelector('.phone-inner');
+  if (AUTH_SCREENS.includes(id)) {
+    inner.classList.add('app-shell-auth');
+  } else {
+    inner.classList.remove('app-shell-auth');
+  }
+  const el = document.getElementById(id);
+  if (el) {
+    el.classList.add('active');
+    el.style.animation = 'fadeIn 0.3s var(--ease)';
+  }
+}
+
+function showAppScreen(screenId) {
+  screenId = screenId || 'screen-home';
+  const inner = document.querySelector('.phone-inner');
+  inner.classList.remove('app-shell-auth');
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  const el = document.getElementById(screenId);
+  if (el) {
+    el.classList.add('active');
+    el.style.animation = 'fadeIn 0.3s var(--ease)';
+    requestAnimationFrame(() => animateProgressBars(el));
+  }
+  updateNav(screenId);
+  screenHistory = [screenId];
+  currentScreen = screenId;
+  scrollToTop();
+}
+
+// =========================
+// LOGIN HANDLER
+// =========================
+function handleLogin() {
+  const emailEl = document.getElementById('loginEmail');
+  const pwEl = document.getElementById('loginPassword');
+  const btn = document.getElementById('loginBtn');
+  const errMsg = document.getElementById('loginError');
+
+  const email = emailEl.value.trim();
+  const pw = pwEl.value;
+
+  // Basic validation
+  if (!email || !isValidEmail(email)) {
+    showLoginError('Please enter a valid email address.');
+    emailEl.classList.add('error');
+    return;
+  }
+  if (!pw) {
+    showLoginError('Please enter your password.');
+    pwEl.classList.add('error');
+    return;
+  }
+
+  emailEl.classList.remove('error');
+  pwEl.classList.remove('error');
+  errMsg.classList.remove('visible');
+
+  // Show spinner / loading state
+  btn.disabled = true;
+  btn.innerHTML = '<div class="spinner"></div>';
+
+  // Simulate API call
+  setTimeout(() => {
+    btn.disabled = false;
+    btn.textContent = 'Log In';
+
+    // For demo: any valid email/pw logs in
+    const fakeToken = 'demo_token_' + Date.now();
+    const user = { name: email.split('@')[0], email: email };
+    Auth.login(fakeToken, user);
+    showAppScreen('screen-home');
+
+    // Re-init icons for newly visible screens
+    if (typeof lucide !== 'undefined') lucide.createIcons();
+  }, 1000);
+}
+
+function showLoginError(msg) {
+  const errMsg = document.getElementById('loginError');
+  errMsg.textContent = msg;
+  errMsg.classList.add('visible');
+  const form = document.getElementById('screen-login').querySelector('.auth-body');
+  form.classList.remove('shake');
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => form.classList.add('shake'));
+  });
+  // Remove shake after animation completes
+  setTimeout(() => form.classList.remove('shake'), 500);
+}
+
+// =========================
+// SOCIAL LOGIN (STUB)
+// =========================
+function handleSocialLogin(event, provider) {
+  // Demo: simulate successful social login
+  const btn = event.currentTarget;
+  const origHTML = btn.innerHTML;
+  btn.disabled = true;
+  btn.innerHTML = '<div class="spinner" style="border-top-color:var(--color-primary); border-color:var(--color-border);"></div><span>Connecting…</span>';
+
+  setTimeout(() => {
+    btn.disabled = false;
+    btn.innerHTML = origHTML;
+    const fakeToken = provider.toLowerCase() + '_token_' + Date.now();
+    Auth.login(fakeToken, { name: 'Val', email: 'val@example.com', provider });
+    showAppScreen('screen-home');
+    if (typeof lucide !== 'undefined') lucide.createIcons();
+  }, 1000);
+}
+
+// =========================
+// REGISTER HANDLER
+// =========================
+function handleRegister() {
+  const name = document.getElementById('regName').value.trim();
+  const email = document.getElementById('regEmail').value.trim();
+  const pw = document.getElementById('regPassword').value;
+  const confirm = document.getElementById('regConfirm').value;
+  const agree = document.getElementById('agreeTerms').checked;
+  const btn = document.getElementById('registerBtn');
+
+  if (!name) { alert('Please enter your full name.'); return; }
+  if (!isValidEmail(email)) {
+    document.getElementById('regEmail').classList.add('error');
+    document.getElementById('regEmailMsg').textContent = 'Please enter a valid email.';
+    document.getElementById('regEmailMsg').className = 'auth-field-msg error';
+    return;
+  }
+  const strength = getPwStrength(pw);
+  if (strength.score < 2) { alert('Please choose a stronger password.'); return; }
+  if (pw !== confirm) {
+    document.getElementById('regConfirm').classList.add('error');
+    document.getElementById('regConfirmMsg').textContent = 'Passwords do not match.';
+    document.getElementById('regConfirmMsg').className = 'auth-field-msg error';
+    return;
+  }
+  if (!agree) { alert('Please agree to the Terms of Service and Privacy Policy.'); return; }
+
+  btn.disabled = true;
+  btn.innerHTML = '<div class="spinner"></div>';
+
+  setTimeout(() => {
+    btn.disabled = false;
+    btn.textContent = 'Create Account';
+    // Show verification screen
+    const verifyDesc = document.getElementById('verifyDesc');
+    verifyDesc.textContent = 'We sent a verification link to ' + email + '.';
+    showAuthScreen('screen-verify');
+    startResendTimer('verifyResendWrap', () => {
+      // resend action stub
+    });
+  }, 1000);
+}
+
+// =========================
+// EMAIL VALIDATION
+// =========================
+function isValidEmail(email) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+}
+
+function validateRegEmail() {
+  const el = document.getElementById('regEmail');
+  const msg = document.getElementById('regEmailMsg');
+  const val = el.value.trim();
+  if (!val) { el.classList.remove('error'); msg.textContent = ''; msg.className = 'auth-field-msg'; return; }
+  if (isValidEmail(val)) {
+    el.classList.remove('error');
+    msg.textContent = '';
+    msg.className = 'auth-field-msg';
+  } else {
+    el.classList.add('error');
+    msg.textContent = 'Please enter a valid email address.';
+    msg.className = 'auth-field-msg error';
+  }
+}
+
+// =========================
+// PASSWORD VISIBILITY TOGGLE
+// =========================
+function togglePwVisibility(inputId, btn) {
+  const input = document.getElementById(inputId);
+  const isText = input.type === 'text';
+  input.type = isText ? 'password' : 'text';
+  btn.innerHTML = isText
+    ? '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>'
+    : '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>';
+}
+
+// =========================
+// PASSWORD STRENGTH
+// =========================
+function getPwStrength(pw) {
+  const rules = {
+    length:  pw.length >= 8,
+    upper:   /[A-Z]/.test(pw),
+    lower:   /[a-z]/.test(pw),
+    number:  /[0-9]/.test(pw),
+    special: /[^A-Za-z0-9]/.test(pw)
+  };
+  const score = Object.values(rules).filter(Boolean).length;
+  return { rules, score };
+}
+
+function updatePwStrength() {
+  const pw = document.getElementById('regPassword').value;
+  const { rules, score } = getPwStrength(pw);
+
+  // Requirements
+  setReq('req-length',  rules.length);
+  setReq('req-upper',   rules.upper);
+  setReq('req-lower',   rules.lower);
+  setReq('req-number',  rules.number);
+  setReq('req-special', rules.special);
+
+  // Strength bar
+  const fill = document.getElementById('pwStrengthFill');
+  const label = document.getElementById('pwStrengthLabel');
+  if (!pw) {
+    fill.style.width = '0';
+    fill.style.background = '';
+    label.textContent = '';
+    label.style.color = '';
+    return;
+  }
+  if (score <= 2) {
+    fill.style.width = '33%';
+    fill.style.background = 'var(--color-error)';
+    label.textContent = 'Weak';
+    label.style.color = 'var(--color-error)';
+  } else if (score <= 3) {
+    fill.style.width = '66%';
+    fill.style.background = 'var(--color-warning)';
+    label.textContent = 'Medium';
+    label.style.color = 'var(--color-warning)';
+  } else {
+    fill.style.width = '100%';
+    fill.style.background = 'var(--color-success)';
+    label.textContent = 'Strong';
+    label.style.color = 'var(--color-success)';
+  }
+}
+
+function setReq(id, met) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.classList.toggle('met', met);
+  const icon = el.querySelector('.pw-req-icon');
+  if (met) {
+    icon.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>';
+  } else {
+    icon.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>';
+  }
+}
+
+// =========================
+// CONFIRM PASSWORD VALIDATION
+// =========================
+function validateConfirmPw() {
+  const pw = document.getElementById('regPassword').value;
+  const confirm = document.getElementById('regConfirm').value;
+  const el = document.getElementById('regConfirm');
+  const msg = document.getElementById('regConfirmMsg');
+  if (!confirm) { el.classList.remove('error'); msg.textContent = ''; msg.className = 'auth-field-msg'; return; }
+  if (pw === confirm) {
+    el.classList.remove('error');
+    msg.textContent = 'Passwords match';
+    msg.className = 'auth-field-msg ok';
+  } else {
+    el.classList.add('error');
+    msg.textContent = 'Passwords do not match';
+    msg.className = 'auth-field-msg error';
+  }
+}
+
+// =========================
+// FORGOT PASSWORD HANDLER
+// =========================
+function handleForgotPassword() {
+  const emailEl = document.getElementById('forgotEmail');
+  const msg = document.getElementById('forgotEmailMsg');
+  const btn = document.getElementById('forgotBtn');
+  const email = emailEl.value.trim();
+
+  if (!isValidEmail(email)) {
+    emailEl.classList.add('error');
+    msg.textContent = 'Please enter a valid email address.';
+    msg.className = 'auth-field-msg error';
+    return;
+  }
+  emailEl.classList.remove('error');
+  msg.textContent = '';
+  msg.className = 'auth-field-msg';
+
+  btn.disabled = true;
+  btn.innerHTML = '<div class="spinner"></div>';
+
+  setTimeout(() => {
+    btn.disabled = false;
+    btn.textContent = 'Send Reset Link';
+    // Show success state
+    document.getElementById('forgotFormState').style.display = 'none';
+    const successDesc = document.getElementById('forgotSuccessDesc');
+    successDesc.textContent = 'We sent a password reset link to ' + email + '.';
+    const successBox = document.getElementById('forgotSuccessState');
+    successBox.classList.add('visible');
+    startResendTimer('forgotResendWrap', () => {
+      // resend stub
+    });
+  }, 1000);
+}
+
+// =========================
+// RESEND TIMER
+// =========================
+function startResendTimer(wrapperId, onResend) {
+  const wrap = document.getElementById(wrapperId);
+  if (!wrap) return;
+  let seconds = 59;
+
+  function tick() {
+    if (seconds > 0) {
+      wrap.innerHTML = '<span>Resend link in ' + seconds + 's</span>';
+      seconds--;
+      setTimeout(tick, 1000);
+    } else {
+      wrap.innerHTML = '<span class="resend-active" onclick="this.parentElement._onResend && this.parentElement._onResend()">Resend link</span>';
+    }
+  }
+  wrap._onResend = onResend;
+  tick();
+}
+
+// =========================
+// EMAIL APP OPENER
+// =========================
+function openEmailApp() {
+  // Try to open mailto: as a gentle hint
+  window.open('mailto:', '_blank');
+}
+
+// =========================
+// LOGOUT MODAL
+// =========================
+function openLogoutModal() {
+  document.getElementById('logoutModal').classList.add('open');
+}
+function closeLogoutModal() {
+  document.getElementById('logoutModal').classList.remove('open');
+}
+function confirmLogout() {
+  closeLogoutModal();
+  Auth.logout();
+  // Reset forgot-password form state in case user returns
+  const formState = document.getElementById('forgotFormState');
+  if (formState) formState.style.display = '';
+  const successBox = document.getElementById('forgotSuccessState');
+  if (successBox) successBox.classList.remove('visible');
+  showAuthScreen('screen-login');
+}
+
+// Close logout modal on backdrop click
+document.addEventListener('DOMContentLoaded', () => {
+  const lm = document.getElementById('logoutModal');
+  if (lm) lm.addEventListener('click', e => { if (e.target === lm) closeLogoutModal(); });
+  const dm = document.getElementById('deleteAccountModal');
+  if (dm) dm.addEventListener('click', e => { if (e.target === dm) closeDeleteModal(); });
+});
+
+// =========================
+// TOAST SYSTEM
+// =========================
+function showToast(message, type='info', duration=3000) {
+  const container = document.getElementById('toastContainer');
+  if (!container) return;
+  const toast = document.createElement('div');
+  toast.className = 'toast toast-' + type;
+  const icons = { success: '✓', error: '✕', info: 'ℹ' };
+  toast.innerHTML = '<span style="font-size:16px;">' + (icons[type] || icons.info) + '</span><span>' + message + '</span>';
+  container.appendChild(toast);
+  setTimeout(() => {
+    toast.style.opacity = '0';
+    toast.style.transition = 'opacity 300ms';
+    setTimeout(() => toast.remove(), 350);
+  }, duration);
+}
+
+// =========================
+// ACCORDION (FAQ)
+// =========================
+function toggleAccordion(id) {
+  const item = document.getElementById(id);
+  if (!item) return;
+  const isOpen = item.classList.contains('open');
+  // Close all in the same card
+  const parent = item.closest('.card');
+  if (parent) {
+    parent.querySelectorAll('.accordion-item').forEach(el => {
+      el.classList.remove('open');
+      const btn = el.querySelector('.accordion-header');
+      if (btn) btn.setAttribute('aria-expanded', 'false');
+    });
+  }
+  if (!isOpen) {
+    item.classList.add('open');
+    const btn = item.querySelector('.accordion-header');
+    if (btn) btn.setAttribute('aria-expanded', 'true');
+  }
+}
+
+// =========================
+// DELETE ACCOUNT MODAL
+// =========================
+function openDeleteModal() {
+  const overlay = document.getElementById('deleteAccountModal');
+  if (overlay) {
+    overlay.classList.add('open');
+    document.getElementById('deleteConfirmInput').value = '';
+  }
+}
+function closeDeleteModal() {
+  const overlay = document.getElementById('deleteAccountModal');
+  if (overlay) overlay.classList.remove('open');
+}
+function submitDeleteAccount() {
+  const val = document.getElementById('deleteConfirmInput').value.trim();
+  if (val !== 'DELETE') {
+    document.getElementById('deleteConfirmInput').focus();
+    document.getElementById('deleteConfirmInput').style.borderColor = 'var(--color-error)';
+    showToast('Please type DELETE to confirm.', 'error');
+    return;
+  }
+  closeDeleteModal();
+  Auth.logout();
+  showAuthScreen('screen-login');
+  showToast('Your account has been deleted.', 'success');
+}
+
+// =========================
+// MASTER PUSH TOGGLE
+// =========================
+function toggleMasterPush(btn) {
+  btn.classList.toggle('on');
+  const isOn = btn.classList.contains('on');
+  btn.setAttribute('aria-pressed', isOn);
+  // Disable/enable category toggles
+  const screen = document.getElementById('screen-notifications');
+  if (!screen) return;
+  const categoryToggles = screen.querySelectorAll('.toggle-switch:not(#masterPushToggle)');
+  categoryToggles.forEach(t => {
+    t.disabled = !isOn;
+    t.style.opacity = isOn ? '' : '0.4';
+  });
+}
+
+// =========================
+// BUG REPORT
+// =========================
+function submitBugReport() {
+  const desc = document.getElementById('bugDesc').value.trim();
+  if (!desc) {
+    showToast('Please describe the issue before sending.', 'error');
+    return;
+  }
+  document.getElementById('bugDesc').value = '';
+  showToast('Bug report sent. Thank you!', 'success');
+}
+
+// =========================
+// PROFILE SAVE
+// =========================
+function saveProfile() {
+  const name = document.getElementById('editName').value.trim();
+  const bio  = document.getElementById('editBio').value.trim();
+  if (!name) { showToast('Name cannot be empty.', 'error'); return; }
+  // Update profile display
+  const profileName = document.querySelector('#screen-profile .profile-name');
+  const profileBio  = document.querySelector('#screen-profile .profile-bio');
+  if (profileName) profileName.textContent = name;
+  if (profileBio)  profileBio.textContent = bio;
+  showToast('Profile updated successfully.', 'success');
+  goBack();
+}
+
+// =========================
+// DARK MODE UPDATE — fix aria-pressed
+// =========================
+// Patch toggleDarkMode to also update aria-pressed
+const _patchDarkModeAria = () => {
+  const toggle = document.getElementById('darkModeToggle');
+  if (toggle) toggle.setAttribute('aria-pressed', toggle.classList.contains('on'));
+};
+// Wrap after initial declaration via monkey-patching on DOMContentLoaded
+document.addEventListener('DOMContentLoaded', () => {
+  const dmToggle = document.getElementById('darkModeToggle');
+  if (dmToggle) {
+    dmToggle.addEventListener('click', () => {
+      requestAnimationFrame(() => {
+        dmToggle.setAttribute('aria-pressed', dmToggle.classList.contains('on'));
+      });
+    });
+  }
+});
+
+</script>
+
 </body>
 </html>
