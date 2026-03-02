@@ -6,386 +6,1095 @@
   <title>ZenSensei — Integrations Hub</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300..800&display=swap" rel="stylesheet">
-  <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js" defer></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <style>
-*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-html { -moz-text-size-adjust: none; -webkit-text-size-adjust: none; text-size-adjust: none; -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; text-rendering: optimizeLegibility; height: 100%; overflow: hidden; }
-:root {
-  --text-xs: clamp(0.75rem, 0.7rem + 0.25vw, 0.8125rem);
-  --text-sm: clamp(0.8125rem, 0.78rem + 0.2vw, 0.875rem);
-  --text-base: clamp(0.875rem, 0.85rem + 0.15vw, 0.9375rem);
-  --text-lg: clamp(1rem, 0.95rem + 0.3vw, 1.125rem);
-  --text-xl: clamp(1.125rem, 1rem + 0.5vw, 1.5rem);
-  --text-2xl: clamp(1.5rem, 1.2rem + 1vw, 2rem);
-  --space-1: 0.25rem; --space-2: 0.5rem; --space-3: 0.75rem; --space-4: 1rem;
-  --space-5: 1.25rem; --space-6: 1.5rem; --space-8: 2rem; --space-10: 2.5rem;
-  --space-12: 3rem; --space-16: 4rem;
-  --font-body: 'Inter', system-ui, -apple-system, sans-serif;
-  --radius-sm: 0.375rem; --radius-md: 0.5rem; --radius-lg: 0.75rem;
-  --radius-xl: 1rem; --radius-full: 9999px;
-  --transition-interactive: 180ms cubic-bezier(0.16, 1, 0.3, 1);
-  --domain-calendar: #3B82F6; --domain-academics: #8B5CF6; --domain-health: #10B981;
-  --domain-finance: #F59E0B; --domain-career: #3B82F6; --domain-relationships: #EC4899;
-  --domain-communication: #06B6D4; --domain-data: #6366F1; --domain-developer: #6B7280;
-}
-:root, [data-theme="light"] {
-  --color-bg: #F8FAFC; --color-surface: #FFFFFF; --color-surface-2: #F1F5F9;
-  --color-surface-offset: #E2E8F0; --color-border: #E2E8F0; --color-divider: #E2E8F0;
-  --color-text: #0F172A; --color-text-muted: #6B7280; --color-text-faint: #94A3B8;
-  --color-text-inverse: #FFFFFF;
-  --color-primary: #3B82F6; --color-primary-hover: #2563EB;
-  --color-primary-active: #1D4ED8; --color-primary-highlight: rgba(59,130,246,0.08);
-  --color-success: #10B981; --color-success-hover: #059669;
-  --color-success-highlight: rgba(16,185,129,0.1);
-  --color-warning: #F59E0B; --color-error: #EF4444; --color-purple: #8B5CF6;
-  --shadow-sm: 0 1px 2px rgba(15,23,42,0.04); --shadow-md: 0 4px 12px rgba(15,23,42,0.06);
-  --shadow-lg: 0 12px 32px rgba(15,23,42,0.10);
-  --sidebar-bg: var(--color-surface); --overlay-bg: rgba(15,23,42,0.4);
-}
-[data-theme="dark"] {
-  --color-bg: #0F172A; --color-surface: #1E293B; --color-surface-2: #334155;
-  --color-surface-offset: #475569; --color-border: rgba(148,163,184,0.15);
-  --color-divider: rgba(148,163,184,0.15);
-  --color-text: #F1F5F9; --color-text-muted: #94A3B8; --color-text-faint: #64748B;
-  --color-text-inverse: #0F172A;
-  --color-primary: #60A5FA; --color-primary-hover: #3B82F6;
-  --color-primary-active: #2563EB; --color-primary-highlight: rgba(96,165,250,0.12);
-  --color-success: #34D399; --color-success-hover: #10B981;
-  --color-success-highlight: rgba(52,211,153,0.12);
-  --color-warning: #FBBF24; --color-error: #F87171; --color-purple: #A78BFA;
-  --shadow-sm: 0 1px 2px rgba(0,0,0,0.2); --shadow-md: 0 4px 12px rgba(0,0,0,0.3);
-  --shadow-lg: 0 12px 32px rgba(0,0,0,0.4);
-  --sidebar-bg: var(--color-surface); --overlay-bg: rgba(0,0,0,0.6);
-}
-body { height: 100%; font-family: var(--font-body); font-size: var(--text-base); color: var(--color-text); background: var(--color-bg); line-height: 1.5; overflow: hidden; }
-::selection { background: rgba(59,130,246,0.2); color: var(--color-text); }
-:focus-visible { outline: 2px solid var(--color-primary); outline-offset: 2px; border-radius: var(--radius-sm); }
-button { cursor: pointer; background: none; border: none; font: inherit; color: inherit; }
-input { font: inherit; color: inherit; }
-.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border-width: 0; }
-@media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; } }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { font-size: 16px; }
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      line-height: 1.5;
+    }
 
-.app { display: grid; grid-template-columns: 260px 1fr; grid-template-rows: auto 1fr; height: 100dvh; }
+    /* ─── CSS Variables ──────────────────────────────────────────────────────── */
+    :root {
+      --bg-primary: #f8f9fc;
+      --bg-secondary: #ffffff;
+      --bg-card: #ffffff;
+      --text-primary: #1a1f36;
+      --text-secondary: #6b7280;
+      --text-muted: #9ca3af;
+      --border: #e5e7eb;
+      --border-light: #f3f4f6;
+      --accent: #6366f1;
+      --accent-light: #ede9fe;
+      --accent-hover: #4f46e5;
+      --success: #10b981;
+      --success-light: #d1fae5;
+      --warning: #f59e0b;
+      --warning-light: #fef3c7;
+      --error: #ef4444;
+      --error-light: #fee2e2;
+      --shadow-sm: 0 1px 2px rgba(0,0,0,0.05);
+      --shadow-md: 0 4px 6px -1px rgba(0,0,0,0.1);
+      --shadow-lg: 0 10px 15px -3px rgba(0,0,0,0.1);
+      --radius-sm: 6px;
+      --radius-md: 10px;
+      --radius-lg: 16px;
+      --radius-xl: 20px;
+      --transition: 200ms ease;
+      --transition-interactive: 150ms cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    [data-theme="dark"] {
+      --bg-primary: #0f1117;
+      --bg-secondary: #1a1f2e;
+      --bg-card: #1e2436;
+      --text-primary: #f1f5f9;
+      --text-secondary: #94a3b8;
+      --text-muted: #64748b;
+      --border: #2d3748;
+      --border-light: #1e2d3d;
+      --accent: #818cf8;
+      --accent-light: #1e1b4b;
+      --accent-hover: #6366f1;
+      --success: #34d399;
+      --success-light: #064e3b;
+      --warning: #fbbf24;
+      --warning-light: #451a03;
+      --error: #f87171;
+      --error-light: #450a0a;
+    }
 
-.app-header { grid-column: 1 / -1; display: flex; align-items: center; gap: var(--space-4); padding: var(--space-4) var(--space-6); background: var(--color-surface); border-bottom: 1px solid var(--color-border); z-index: 20; }
-.logo { display: flex; align-items: center; gap: var(--space-2); flex-shrink: 0; }
-.logo-mark { width: 32px; height: 32px; background: var(--color-primary); border-radius: var(--radius-md); display: flex; align-items: center; justify-content: center; color: #fff; font-weight: 700; font-size: 14px; }
-.logo-text { font-size: var(--text-lg); font-weight: 700; color: var(--color-primary); }
-.logo-label { font-size: var(--text-sm); color: var(--color-text-muted); font-weight: 400; margin-left: var(--space-1); }
-.header-search { flex: 1; max-width: 480px; position: relative; }
-.header-search input { width: 100%; padding: var(--space-2) var(--space-4) var(--space-2) var(--space-10); border: 1px solid var(--color-border); border-radius: var(--radius-lg); background: var(--color-bg); font-size: var(--text-sm); color: var(--color-text); transition: border-color var(--transition-interactive), box-shadow var(--transition-interactive); min-height: 40px; }
-.header-search input::placeholder { color: var(--color-text-faint); }
-.header-search input:focus { outline: none; border-color: var(--color-primary); box-shadow: 0 0 0 3px var(--color-primary-highlight); }
-.header-search .search-icon { position: absolute; left: var(--space-3); top: 50%; transform: translateY(-50%); color: var(--color-text-faint); pointer-events: none; }
-.header-actions { display: flex; align-items: center; gap: var(--space-2); margin-left: auto; flex-shrink: 0; }
-.icon-btn { width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; border-radius: var(--radius-md); color: var(--color-text-muted); transition: background var(--transition-interactive), color var(--transition-interactive); }
-.icon-btn:hover { background: var(--color-surface-2); color: var(--color-text); }
-.connected-filter-btn { display: flex; align-items: center; gap: var(--space-2); padding: var(--space-1) var(--space-3); font-size: var(--text-xs); font-weight: 500; border-radius: var(--radius-full); border: 1px solid var(--color-border); color: var(--color-text-muted); transition: all var(--transition-interactive); white-space: nowrap; }
-.connected-filter-btn:hover { border-color: var(--color-success); color: var(--color-success); }
-.connected-filter-btn.active { background: var(--color-success-highlight); border-color: var(--color-success); color: var(--color-success); }
+    /* ─── Layout ──────────────────────────────────────────────────────────────────────── */
+    .app-shell {
+      display: flex;
+      height: 100vh;
+      overflow: hidden;
+    }
+    .sidebar {
+      width: 220px;
+      min-width: 220px;
+      background: var(--bg-secondary);
+      border-right: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      padding: 16px 0;
+      overflow-y: auto;
+    }
+    .sidebar-logo {
+      padding: 0 16px 16px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 17px;
+      font-weight: 700;
+      color: var(--text-primary);
+      border-bottom: 1px solid var(--border);
+      margin-bottom: 8px;
+    }
+    .sidebar-logo .logo-icon {
+      width: 28px;
+      height: 28px;
+      border-radius: 8px;
+      background: linear-gradient(135deg, var(--accent), #a78bfa);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-size: 14px;
+    }
+    .nav-section { padding: 4px 8px; }
+    .nav-label {
+      font-size: 10px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--text-muted);
+      padding: 8px 8px 4px;
+    }
+    .nav-item {
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      padding: 8px 10px;
+      border-radius: var(--radius-sm);
+      font-size: 13.5px;
+      font-weight: 500;
+      color: var(--text-secondary);
+      cursor: pointer;
+      transition: background var(--transition), color var(--transition);
+      text-decoration: none;
+    }
+    .nav-item:hover { background: var(--bg-primary); color: var(--text-primary); }
+    .nav-item.active {
+      background: var(--accent-light);
+      color: var(--accent);
+      font-weight: 600;
+    }
+    .nav-item i { width: 16px; text-align: center; font-size: 13px; flex-shrink: 0; }
+    .main-content {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+    .top-bar {
+      height: 56px;
+      background: var(--bg-secondary);
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 20px;
+      flex-shrink: 0;
+    }
+    .top-bar-left { display: flex; align-items: center; gap: 12px; }
+    .page-title { font-size: 16px; font-weight: 600; color: var(--text-primary); }
+    .top-bar-right { display: flex; align-items: center; gap: 8px; }
+    .content-area {
+      flex: 1;
+      overflow-y: auto;
+      padding: 24px;
+    }
 
-.sidebar { grid-row: 2; grid-column: 1; background: var(--sidebar-bg); border-right: 1px solid var(--color-border); overflow-y: auto; overscroll-behavior: contain; padding: var(--space-4) 0; display: flex; flex-direction: column; }
-.sidebar-section-label { font-size: var(--text-xs); font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; color: var(--color-text-faint); padding: var(--space-3) var(--space-5) var(--space-2); }
-.sidebar-nav { display: flex; flex-direction: column; gap: var(--space-1); padding: 0 var(--space-3); }
-.sidebar-item { display: flex; align-items: center; gap: var(--space-3); padding: var(--space-2) var(--space-3); border-radius: var(--radius-md); font-size: var(--text-sm); font-weight: 450; color: var(--color-text-muted); transition: all var(--transition-interactive); position: relative; text-align: left; width: 100%; }
-.sidebar-item:hover { background: var(--color-primary-highlight); color: var(--color-text); }
-.sidebar-item.active { background: var(--color-primary-highlight); color: var(--color-primary); font-weight: 550; }
-.sidebar-item .emoji { font-size: 16px; width: 20px; text-align: center; flex-shrink: 0; }
-.sidebar-item .label { flex: 1; }
-.sidebar-item .count { font-size: var(--text-xs); font-weight: 500; color: var(--color-text-faint); background: var(--color-surface-2); padding: 2px var(--space-2); border-radius: var(--radius-full); min-width: 24px; text-align: center; font-variant-numeric: tabular-nums; }
-.sidebar-item.active .count { background: var(--color-primary); color: var(--color-text-inverse); }
-.sidebar-flow { margin-top: auto; padding: var(--space-4) var(--space-5); border-top: 1px solid var(--color-divider); }
-.sidebar-flow-title { font-size: var(--text-xs); font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; color: var(--color-text-faint); margin-bottom: var(--space-3); }
-.flow-item { display: flex; align-items: center; gap: var(--space-2); font-size: var(--text-xs); color: var(--color-text-muted); margin-bottom: var(--space-2); line-height: 1.4; }
-.flow-arrow { color: var(--color-primary); flex-shrink: 0; }
+    /* ─── Buttons ──────────────────────────────────────────────────────────────────────── */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 7px 14px;
+      border-radius: var(--radius-sm);
+      font-size: 13px;
+      font-weight: 500;
+      border: none;
+      cursor: pointer;
+      transition: all var(--transition-interactive);
+      text-decoration: none;
+      white-space: nowrap;
+    }
+    .btn-primary {
+      background: var(--accent);
+      color: white;
+    }
+    .btn-primary:hover { background: var(--accent-hover); transform: translateY(-1px); }
+    .btn-secondary {
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      border: 1px solid var(--border);
+    }
+    .btn-secondary:hover { background: var(--border-light); }
+    .btn-sm { padding: 5px 10px; font-size: 12px; }
+    .btn-icon {
+      width: 32px;
+      height: 32px;
+      padding: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: var(--radius-sm);
+    }
 
-.main { grid-row: 2; grid-column: 2; overflow-y: auto; overscroll-behavior: contain; padding: var(--space-6); }
-.stats-bar { display: flex; gap: var(--space-4); margin-bottom: var(--space-6); flex-wrap: wrap; }
-.stat-item { display: flex; align-items: center; gap: var(--space-2); padding: var(--space-3) var(--space-5); background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-lg); font-size: var(--text-sm); box-shadow: var(--shadow-sm); }
-.stat-number { font-weight: 700; font-variant-numeric: tabular-nums lining-nums; font-size: var(--text-lg); }
-.stat-number.blue { color: var(--color-primary); } .stat-number.green { color: var(--color-success); } .stat-number.purple { color: var(--color-purple); } .stat-number.orange { color: var(--color-warning); }
-.stat-label { color: var(--color-text-muted); }
-.main-subtitle { font-size: var(--text-sm); color: var(--color-text-muted); margin-bottom: var(--space-6); max-width: 60ch; }
-.category-header { display: flex; align-items: center; gap: var(--space-3); margin-bottom: var(--space-4); margin-top: var(--space-8); }
-.category-header:first-child { margin-top: 0; }
-.category-header .cat-emoji { font-size: 20px; }
-.category-header h2 { font-size: var(--text-lg); font-weight: 600; }
-.category-header .cat-count { font-size: var(--text-xs); color: var(--color-text-faint); font-weight: 500; }
+    /* ─── Search ──────────────────────────────────────────────────────────────────────── */
+    .search-bar {
+      position: relative;
+      width: 260px;
+    }
+    .search-bar i {
+      position: absolute;
+      left: 10px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: var(--text-muted);
+      font-size: 13px;
+    }
+    .search-bar input {
+      width: 100%;
+      padding: 7px 10px 7px 32px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      font-size: 13px;
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      outline: none;
+      transition: border-color var(--transition);
+    }
+    .search-bar input:focus { border-color: var(--accent); }
 
-.cards-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(340px, 100%), 1fr)); gap: var(--space-4); margin-bottom: var(--space-6); }
-.integration-card { position: relative; background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-lg); padding: var(--space-5); cursor: pointer; transition: box-shadow var(--transition-interactive), transform var(--transition-interactive), border-color var(--transition-interactive); display: flex; flex-direction: column; gap: var(--space-3); overflow: hidden; }
-.integration-card::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; background: var(--accent-color, var(--color-primary)); border-radius: 3px 0 0 3px; opacity: 0.6; transition: opacity var(--transition-interactive); }
-.integration-card:hover { box-shadow: var(--shadow-md); transform: translateY(-2px); border-color: var(--accent-color, var(--color-primary)); }
-.integration-card:hover::before { opacity: 1; }
-.integration-card:active { transform: translateY(0); }
-.integration-card.connected { border-color: var(--color-success); }
-.integration-card.connected::before { background: var(--color-success); opacity: 1; }
-.card-top { display: flex; align-items: flex-start; gap: var(--space-3); }
-.app-icon { width: 40px; height: 40px; border-radius: var(--radius-md); display: flex; align-items: center; justify-content: center; flex-shrink: 0; color: #fff; font-weight: 600; font-size: 14px; }
-.card-info { flex: 1; min-width: 0; }
-.card-name { font-size: var(--text-sm); font-weight: 600; margin-bottom: var(--space-1); display: flex; align-items: center; gap: var(--space-2); }
-.card-desc { font-size: var(--text-xs); color: var(--color-text-muted); line-height: 1.45; }
-.card-meta { display: flex; align-items: center; gap: var(--space-2); flex-wrap: wrap; }
-.cat-pill { display: inline-flex; align-items: center; padding: 2px var(--space-2); font-size: 11px; font-weight: 500; border-radius: var(--radius-full); background: var(--color-surface-2); color: var(--color-text-muted); }
-.powers-line { font-size: 11px; color: var(--color-text-faint); }
-.powers-line strong { font-weight: 500; color: var(--color-text-muted); }
-.card-actions { display: flex; align-items: center; gap: var(--space-2); margin-top: auto; }
-.connect-btn { display: inline-flex; align-items: center; gap: var(--space-1); padding: var(--space-1) var(--space-3); font-size: var(--text-xs); font-weight: 500; border-radius: var(--radius-md); border: 1px solid var(--color-primary); color: var(--color-primary); background: transparent; transition: all var(--transition-interactive); min-height: 32px; }
-.connect-btn:hover { background: var(--color-primary); color: var(--color-text-inverse); }
-.connected-badge { display: inline-flex; align-items: center; gap: var(--space-1); padding: var(--space-1) var(--space-3); font-size: var(--text-xs); font-weight: 500; border-radius: var(--radius-md); background: var(--color-success-highlight); color: var(--color-success); min-height: 32px; position: relative; }
-.connected-badge::after { content: ''; width: 6px; height: 6px; border-radius: 50%; background: var(--color-success); animation: pulse 2s ease-in-out infinite; }
-@keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
-.card-expand { display: none; padding-top: var(--space-3); border-top: 1px solid var(--color-divider); font-size: var(--text-xs); color: var(--color-text-muted); line-height: 1.5; animation: fadeIn 200ms cubic-bezier(0.16, 1, 0.3, 1); }
-.card-expand.show { display: block; }
-.card-expand strong { color: var(--color-text); font-weight: 500; }
-@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-.integration-card.hidden-card { display: none; }
+    /* ─── Stats bar ────────────────────────────────────────────────────────────────────── */
+    .stats-bar {
+      display: flex;
+      gap: 16px;
+      margin-bottom: 20px;
+    }
+    .stat-card {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      padding: 14px 18px;
+      flex: 1;
+      min-width: 0;
+    }
+    .stat-card .stat-value {
+      font-size: 24px;
+      font-weight: 700;
+      color: var(--text-primary);
+      line-height: 1.2;
+    }
+    .stat-card .stat-label {
+      font-size: 12px;
+      color: var(--text-muted);
+      margin-top: 2px;
+    }
+    .stat-card .stat-sub {
+      font-size: 12px;
+      color: var(--success);
+      margin-top: 4px;
+      font-weight: 500;
+    }
 
-.modal-overlay { position: fixed; inset: 0; background: var(--overlay-bg); z-index: 100; display: none; align-items: center; justify-content: center; padding: var(--space-4); }
-.modal-overlay.show { display: flex; animation: fadeIn 200ms cubic-bezier(0.16, 1, 0.3, 1); }
-.modal-box { background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-xl); padding: var(--space-8); max-width: 440px; width: 100%; box-shadow: var(--shadow-lg); text-align: center; animation: modalIn 300ms cubic-bezier(0.16, 1, 0.3, 1); }
-@keyframes modalIn { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
-.modal-icon { width: 56px; height: 56px; border-radius: var(--radius-lg); margin: 0 auto var(--space-4); display: flex; align-items: center; justify-content: center; background: var(--color-primary-highlight); color: var(--color-primary); }
-.modal-title { font-size: var(--text-lg); font-weight: 600; margin-bottom: var(--space-2); }
-.modal-desc { font-size: var(--text-sm); color: var(--color-text-muted); margin-bottom: var(--space-6); line-height: 1.5; }
-.modal-close-btn { display: inline-flex; align-items: center; justify-content: center; padding: var(--space-2) var(--space-6); font-size: var(--text-sm); font-weight: 500; border-radius: var(--radius-md); background: var(--color-primary); color: var(--color-text-inverse); transition: background var(--transition-interactive); min-height: 40px; }
-.modal-close-btn:hover { background: var(--color-primary-hover); }
+    /* ─── Filter tabs ──────────────────────────────────────────────────────────────────── */
+    .filter-row {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 20px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+    .filter-tab {
+      padding: 5px 12px;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: 500;
+      cursor: pointer;
+      border: 1px solid var(--border);
+      background: var(--bg-secondary);
+      color: var(--text-secondary);
+      transition: all var(--transition-interactive);
+    }
+    .filter-tab:hover { border-color: var(--accent); color: var(--accent); }
+    .filter-tab.active {
+      background: var(--accent);
+      color: white;
+      border-color: var(--accent);
+    }
 
-.mobile-nav { display: none; overflow-x: auto; overscroll-behavior-x: contain; -webkit-overflow-scrolling: touch; gap: var(--space-2); padding: var(--space-3) var(--space-4); border-bottom: 1px solid var(--color-border); background: var(--color-surface); white-space: nowrap; scrollbar-width: none; }
-.mobile-nav::-webkit-scrollbar { display: none; }
-.mobile-pill { display: inline-flex; align-items: center; gap: var(--space-1); padding: var(--space-2) var(--space-3); font-size: var(--text-xs); font-weight: 500; border-radius: var(--radius-full); border: 1px solid var(--color-border); color: var(--color-text-muted); background: var(--color-surface); transition: all var(--transition-interactive); flex-shrink: 0; white-space: nowrap; }
-.mobile-pill:hover { border-color: var(--color-primary); color: var(--color-primary); }
-.mobile-pill.active { background: var(--color-primary); border-color: var(--color-primary); color: #fff; }
+    /* ─── Integration Grid ──────────────────────────────────────────────────────────────── */
+    .integrations-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+      gap: 14px;
+    }
+    .integration-card {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      padding: 16px;
+      cursor: pointer;
+      transition: all var(--transition-interactive),
+                  transform var(--transition-interactive);
+      position: relative;
+    }
+    .integration-card:hover {
+      border-color: var(--accent);
+      box-shadow: var(--shadow-md);
+      transform: translateY(-2px);
+    }
+    .integration-card.connected {
+      border-color: var(--success);
+      background: var(--bg-secondary);
+    }
+    .integration-card.connected::after {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 3px;
+      background: var(--success);
+      border-radius: var(--radius-md) var(--radius-md) 0 0;
+    }
+    .card-header {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      margin-bottom: 10px;
+    }
+    .service-icon {
+      width: 40px;
+      height: 40px;
+      border-radius: var(--radius-sm);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+      flex-shrink: 0;
+    }
+    .connection-badge {
+      font-size: 10px;
+      font-weight: 600;
+      padding: 2px 8px;
+      border-radius: 12px;
+      letter-spacing: 0.04em;
+    }
+    .badge-connected {
+      background: var(--success-light);
+      color: var(--success);
+    }
+    .badge-disconnected {
+      background: var(--bg-primary);
+      color: var(--text-muted);
+      border: 1px solid var(--border);
+    }
+    .badge-error {
+      background: var(--error-light);
+      color: var(--error);
+    }
+    .badge-coming-soon {
+      background: var(--warning-light);
+      color: var(--warning);
+    }
+    .service-name {
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--text-primary);
+      margin-bottom: 3px;
+    }
+    .service-desc {
+      font-size: 12px;
+      color: var(--text-secondary);
+      line-height: 1.4;
+      margin-bottom: 10px;
+    }
+    .service-tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 4px;
+      margin-bottom: 10px;
+    }
+    .service-tag {
+      font-size: 10px;
+      padding: 2px 7px;
+      border-radius: 10px;
+      background: var(--bg-primary);
+      color: var(--text-muted);
+      border: 1px solid var(--border-light);
+    }
+    .card-actions {
+      display: flex;
+      gap: 6px;
+      margin-top: 4px;
+    }
+    .last-sync {
+      font-size: 11px;
+      color: var(--text-muted);
+      margin-top: 6px;
+    }
 
-@media (max-width: 768px) { .app { grid-template-columns: 1fr; grid-template-rows: auto auto 1fr; } .sidebar { display: none; } .mobile-nav { display: flex; grid-column: 1; grid-row: 2; } .main { grid-column: 1; grid-row: 3; padding: var(--space-4); } .cards-grid { grid-template-columns: 1fr; } }
-@media (min-width: 769px) and (max-width: 1024px) { .app { grid-template-columns: 220px 1fr; } }
+    /* ─── Power Flow (category label) ─────────────────────────────────────────────── */
+    .power-flow {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin-bottom: 6px;
+    }
+    .pf-icon {
+      width: 18px;
+      height: 18px;
+      border-radius: 4px;
+      background-size: cover;
+      flex-shrink: 0;
+    }
+    .pf-label {
+      font-size: 11px;
+      color: var(--text-secondary);
+      font-weight: 500;
+    }
+    .powers-label {
+      font-size: 10px;
+      color: var(--text-muted);
+    }
 
-.no-results { display: none; text-align: center; padding: var(--space-16) var(--space-4); color: var(--color-text-faint); }
-.no-results.show { display: block; }
-.no-results h3 { font-size: var(--text-lg); font-weight: 500; color: var(--color-text-muted); margin-bottom: var(--space-2); }
-.powers-section { margin-top: var(--space-8); padding: var(--space-6); background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-lg); }
-.powers-section h2 { font-size: var(--text-lg); font-weight: 600; margin-bottom: var(--space-4); }
-.powers-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(260px, 100%), 1fr)); gap: var(--space-3); }
-.power-flow { display: flex; align-items: center; gap: var(--space-3); padding: var(--space-3) var(--space-4); background: var(--color-bg); border-radius: var(--radius-md); font-size: var(--text-xs); line-height: 1.4; }
-.power-flow .pf-icon { width: 32px; height: 32px; border-radius: var(--radius-sm); display: flex; align-items: center; justify-content: center; flex-shrink: 0; color: #fff; font-size: 14px; }
-.power-flow .pf-text { color: var(--color-text-muted); }
-.power-flow .pf-text strong { color: var(--color-text); font-weight: 500; }
+    /* ─── Detail Panel ─────────────────────────────────────────────────────────────────── */
+    .detail-panel {
+      position: fixed;
+      top: 0; right: 0; bottom: 0;
+      width: 400px;
+      background: var(--bg-secondary);
+      border-left: 1px solid var(--border);
+      z-index: 200;
+      display: flex;
+      flex-direction: column;
+      transform: translateX(100%);
+      transition: transform 0.28s cubic-bezier(0.4, 0, 0.2, 1);
+      box-shadow: var(--shadow-lg);
+    }
+    .detail-panel.open { transform: translateX(0); }
+    .panel-header {
+      padding: 16px 20px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .panel-header-left { display: flex; align-items: center; gap: 10px; }
+    .panel-icon {
+      width: 40px;
+      height: 40px;
+      border-radius: var(--radius-sm);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 20px;
+    }
+    .panel-title { font-size: 16px; font-weight: 600; color: var(--text-primary); }
+    .panel-subtitle { font-size: 12px; color: var(--text-secondary); }
+    .panel-body { flex: 1; overflow-y: auto; padding: 20px; }
+    .panel-section { margin-bottom: 20px; }
+    .panel-section-title {
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--text-muted);
+      margin-bottom: 10px;
+    }
+    .panel-footer {
+      padding: 14px 20px;
+      border-top: 1px solid var(--border);
+      display: flex;
+      gap: 8px;
+    }
+    .panel-footer .btn { flex: 1; justify-content: center; }
+    .scope-list { display: flex; flex-direction: column; gap: 6px; }
+    .scope-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 13px;
+      color: var(--text-secondary);
+    }
+    .scope-item i { color: var(--success); font-size: 12px; }
+    .permission-note {
+      font-size: 12px;
+      color: var(--text-muted);
+      background: var(--bg-primary);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 10px 12px;
+      line-height: 1.5;
+    }
+
+    /* ─── Connected service info ───────────────────────────────────────────────────── */
+    .connected-info {
+      background: var(--success-light);
+      border: 1px solid var(--success);
+      border-radius: var(--radius-sm);
+      padding: 10px 12px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 14px;
+    }
+    .connected-info i { color: var(--success); }
+    .connected-info-text { font-size: 13px; color: var(--text-primary); }
+    .connected-info-sub { font-size: 11px; color: var(--text-secondary); }
+    .sync-log { display: flex; flex-direction: column; gap: 8px; }
+    .sync-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 12px;
+      color: var(--text-secondary);
+    }
+    .sync-item i { font-size: 11px; }
+    .sync-item .sync-time { margin-left: auto; color: var(--text-muted); }
+    .data-types { display: flex; flex-direction: column; gap: 6px; }
+    .data-type-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 13px;
+    }
+    .data-type-label { color: var(--text-secondary); }
+    .data-type-count { font-weight: 600; color: var(--text-primary); }
+
+    /* ─── Overlay ──────────────────────────────────────────────────────────────────────── */
+    .overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.4);
+      z-index: 100;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.25s;
+    }
+    .overlay.visible { opacity: 1; pointer-events: all; }
+
+    /* ─── Toast ────────────────────────────────────────────────────────────────────────── */
+    .toast-container {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      z-index: 1000;
+    }
+    .toast {
+      padding: 10px 16px;
+      border-radius: var(--radius-sm);
+      font-size: 13px;
+      font-weight: 500;
+      box-shadow: var(--shadow-lg);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      animation: slideIn 0.2s ease;
+      max-width: 320px;
+    }
+    @keyframes slideIn {
+      from { transform: translateX(100%); opacity: 0; }
+      to { transform: translateX(0); opacity: 1; }
+    }
+    .toast-success { background: var(--success); color: white; }
+    .toast-error { background: var(--error); color: white; }
+    .toast-info { background: var(--accent); color: white; }
+
+    /* ─── Coming Soon overlay on card ───────────────────────────────────────────────── */
+    .coming-soon-overlay {
+      position: absolute;
+      inset: 0;
+      background: rgba(var(--bg-secondary-rgb, 255,255,255), 0.85);
+      border-radius: var(--radius-md);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      backdrop-filter: blur(2px);
+    }
+    .coming-soon-icon i { width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; border-radius: 50%; background: var(--warning-light); color: var(--warning); font-size: 14px; }
+    .coming-soon-text { font-size: 12px; font-weight: 600; color: var(--text-secondary); }
   </style>
+  <link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/regular/style.css">
 </head>
 <body>
-<a href="#main-content" class="sr-only" style="position:fixed;top:0;left:0;z-index:999;background:var(--color-primary);color:#fff;padding:var(--space-2) var(--space-4);border-radius:0 0 var(--radius-md) 0;">Skip to content</a>
+<div class="app-shell">
+  <!-- Sidebar -->
+  <nav class="sidebar" id="sidebar"></nav>
 
-<div class="app">
-  <header class="app-header">
-    <div class="logo"><div class="logo-mark">Z</div><span class="logo-text">ZenSensei</span><span class="logo-label">Integrations</span></div>
-    <div class="header-search"><i data-lucide="search" class="search-icon" style="width:16px;height:16px;"></i><input type="text" id="searchInput" placeholder="Search integrations..." aria-label="Search integrations"></div>
-    <div class="header-actions">
-      <button class="connected-filter-btn" id="connectedFilter" aria-label="Show only connected"><i data-lucide="plug-2" style="width:14px;height:14px;"></i><span>Connected</span></button>
-      <button class="icon-btn" data-theme-toggle aria-label="Switch to dark mode"><i data-lucide="moon" style="width:18px;height:18px;"></i></button>
-    </div>
-  </header>
-  <nav class="mobile-nav" aria-label="Category filters"></nav>
-  <aside class="sidebar">
-    <div class="sidebar-section-label">Categories</div>
-    <nav class="sidebar-nav" id="sidebarNav" aria-label="Integration categories"></nav>
-    <div class="sidebar-flow">
-      <div class="sidebar-flow-title">How data flows</div>
-      <div class="flow-item"><span class="flow-arrow"><i data-lucide="arrow-right" style="width:12px;height:12px;"></i></span> Calendar apps → Goals &amp; Scheduling</div>
-      <div class="flow-item"><span class="flow-arrow"><i data-lucide="arrow-right" style="width:12px;height:12px;"></i></span> Health apps → Wellness tracking</div>
-      <div class="flow-item"><span class="flow-arrow"><i data-lucide="arrow-right" style="width:12px;height:12px;"></i></span> Finance apps → Financial dashboard</div>
-      <div class="flow-item"><span class="flow-arrow"><i data-lucide="arrow-right" style="width:12px;height:12px;"></i></span> All data → AI cross-domain insights</div>
-    </div>
-  </aside>
-  <main class="main" id="main-content">
-    <div class="stats-bar">
-      <div class="stat-item"><span class="stat-number blue" id="totalCount">67</span><span class="stat-label">Available</span></div>
-      <div class="stat-item"><span class="stat-number green">1</span><span class="stat-label">Connected</span></div>
-      <div class="stat-item"><span class="stat-number purple">9</span><span class="stat-label">Categories</span></div>
-      <div class="stat-item"><span class="stat-number orange">8</span><span class="stat-label">Life domains</span></div>
-    </div>
-    <p class="main-subtitle">Connect your apps to power ZenSensei’s insights across every domain of your life.</p>
-    <div id="integrationsList"></div>
-    <div class="no-results" id="noResults"><div style="margin-bottom:var(--space-4);color:var(--color-text-faint);"><i data-lucide="search-x" style="width:48px;height:48px;"></i></div><h3>No integrations found</h3><p>Try a different search term or category filter.</p></div>
-    <div class="powers-section" id="powersSection">
-      <h2>How integrations power ZenSensei</h2>
-      <div class="powers-grid">
-        <div class="power-flow"><div class="pf-icon" style="background:var(--domain-calendar);"><i data-lucide="calendar" style="width:16px;height:16px;"></i></div><div class="pf-text"><strong>Calendar apps</strong> feed the Goals &amp; Scheduling engine</div></div>
-        <div class="power-flow"><div class="pf-icon" style="background:var(--domain-health);"><i data-lucide="heart-pulse" style="width:16px;height:16px;"></i></div><div class="pf-text"><strong>Health apps</strong> feed Health &amp; Wellness tracking</div></div>
-        <div class="power-flow"><div class="pf-icon" style="background:var(--domain-finance);"><i data-lucide="wallet" style="width:16px;height:16px;"></i></div><div class="pf-text"><strong>Finance apps</strong> feed the Financial Dashboard</div></div>
-        <div class="power-flow"><div class="pf-icon" style="background:var(--color-purple);"><i data-lucide="brain" style="width:16px;height:16px;"></i></div><div class="pf-text"><strong>All data</strong> flows into AI cross-domain pattern discovery</div></div>
+  <!-- Main -->
+  <div class="main-content">
+    <!-- Top bar -->
+    <div class="top-bar">
+      <div class="top-bar-left">
+        <span class="page-title">Integrations Hub</span>
+      </div>
+      <div class="top-bar-right">
+        <div class="search-bar">
+          <i class="ph ph-magnifying-glass"></i>
+          <input type="text" id="searchInput" placeholder="Search integrations..." aria-label="Search integrations">
+        </div>
+        <button class="btn btn-secondary btn-sm" id="syncAllBtn">
+          <i class="ph ph-arrows-clockwise"></i> Sync All
+        </button>
+        <button class="btn btn-secondary btn-icon" id="themeBtn" title="Toggle theme" aria-label="Toggle dark mode">
+          <i class="ph ph-moon"></i>
+        </button>
       </div>
     </div>
-  </main>
-</div>
 
-<div class="modal-overlay" id="connectModal">
-  <div class="modal-box" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
-    <div class="modal-icon"><i data-lucide="plug-2" style="width:24px;height:24px;"></i></div>
-    <h3 class="modal-title" id="modalTitle">Connecting...</h3>
-    <p class="modal-desc" id="modalDesc"></p>
-    <button class="modal-close-btn" id="modalCloseBtn">Close</button>
+    <!-- Content -->
+    <div class="content-area">
+      <!-- Stats -->
+      <div class="stats-bar" id="statsBar"></div>
+
+      <!-- Filter tabs -->
+      <div class="filter-row" id="filterRow"></div>
+
+      <!-- Grid -->
+      <div class="integrations-grid" id="integrationsGrid"></div>
+    </div>
   </div>
 </div>
 
+<!-- Detail Panel -->
+<div class="overlay" id="overlay" role="presentation"></div>
+<aside class="detail-panel" id="detailPanel" aria-label="Integration details" aria-hidden="true"></aside>
+
+<!-- Toast container -->
+<div class="toast-container" id="toastContainer" aria-live="polite" aria-atomic="true"></div>
+
 <script>
-const categories = [
-  { id: 'all', emoji: '⚡', label: 'All Integrations', color: '--color-primary' },
-  { id: 'calendar', emoji: '📅', label: 'Calendar & Scheduling', color: '--domain-calendar' },
-  { id: 'academics', emoji: '📚', label: 'Academics & Learning', color: '--domain-academics' },
-  { id: 'health', emoji: '💪', label: 'Health & Wellness', color: '--domain-health' },
-  { id: 'finance', emoji: '💰', label: 'Finance & Banking', color: '--domain-finance' },
-  { id: 'career', emoji: '💼', label: 'Career & Productivity', color: '--domain-career' },
-  { id: 'relationships', emoji: '👥', label: 'Relationships & Social', color: '--domain-relationships' },
-  { id: 'communication', emoji: '💬', label: 'Communication', color: '--domain-communication' },
-  { id: 'data', emoji: '🗄️', label: 'Data & Storage', color: '--domain-data' },
-  { id: 'developer', emoji: '🔧', label: 'Developer Tools', color: '--domain-developer' },
+// ============================================================
+// DATA
+// ============================================================
+const INTEGRATIONS = [
+  // ─── Productivity ───────────────────────────────────────────────────────────────────
+  { id: 'google-calendar', name: 'Google Calendar', cat: 'productivity', icon: '📅', color: '#4285F4', bg: '#e8f0fe', desc: 'Sync events, auto-detect scheduling patterns and time blocks.', tags: ['events', 'scheduling', 'time'], powers: 'Habits, Goals', status: 'connected', lastSync: '2 min ago', account: 'alex@gmail.com', syncedItems: { Events: 1240, Reminders: 87, 'Recurring Events': 156 }, scopes: ['Read events', 'Read calendar list'] },
+  { id: 'google-tasks', name: 'Google Tasks', cat: 'productivity', icon: '✅', color: '#34A853', bg: '#e6f4ea', desc: 'Import tasks and to-do lists to map against your goals.', tags: ['tasks', 'todos', 'checklists'], powers: 'Goals, Tasks', status: 'disconnected', scopes: ['Read tasks', 'Read task lists'] },
+  { id: 'notion', name: 'Notion', cat: 'productivity', icon: '📝', color: '#000000', bg: '#f4f4f4', desc: 'Sync pages, databases, and notes as knowledge graph nodes.', tags: ['notes', 'database', 'wiki'], powers: 'Knowledge, Projects', status: 'connected', lastSync: '1 hour ago', account: 'workspace@notion.so', syncedItems: { Pages: 342, Databases: 18, 'Database Rows': 1876 }, scopes: ['Read pages', 'Read databases', 'Read blocks'] },
+  { id: 'todoist', name: 'Todoist', cat: 'productivity', icon: '☑️', color: '#DB4035', bg: '#fce8e6', desc: 'Map tasks, projects, and priorities to your life graph.', tags: ['tasks', 'projects', 'priorities'], powers: 'Tasks, Goals', status: 'disconnected', scopes: ['Read tasks', 'Read projects', 'Read labels'] },
+  { id: 'trello', name: 'Trello', cat: 'productivity', icon: '📊', color: '#0052CC', bg: '#e6effc', desc: 'Kanban boards and cards mapped to project milestones.', tags: ['kanban', 'boards', 'cards'], powers: 'Projects, Goals', status: 'coming-soon', scopes: [] },
+  { id: 'asana', name: 'Asana', cat: 'productivity', icon: '🕷️', color: '#F06A6A', bg: '#fde8e8', desc: 'Project tasks and team assignments in your knowledge graph.', tags: ['project mgmt', 'tasks', 'teams'], powers: 'Work, Goals', status: 'coming-soon', scopes: [] },
+  { id: 'linear', name: 'Linear', cat: 'productivity', icon: '⚡', color: '#5E6AD2', bg: '#edeffe', desc: 'Sync issues, cycles, and roadmap items.', tags: ['issues', 'roadmap', 'engineering'], powers: 'Work, Projects', status: 'coming-soon', scopes: [] },
+  { id: 'obsidian', name: 'Obsidian', cat: 'productivity', icon: '💡', color: '#7B68EE', bg: '#eeecff', desc: 'Import your personal knowledge base and note links.', tags: ['notes', 'PKM', 'markdown'], powers: 'Knowledge, Ideas', status: 'coming-soon', scopes: [] },
+  // ─── Communication ───────────────────────────────────────────────────────────────────
+  { id: 'gmail', name: 'Gmail', cat: 'communication', icon: '📧', color: '#EA4335', bg: '#fde8e6', desc: 'Analyze email patterns to surface key relationships and commitments.', tags: ['email', 'relationships', 'commitments'], powers: 'Relationships, Goals', status: 'error', errorMsg: 'Token expired — re-authorize', scopes: ['Read emails metadata', 'Read labels'] },
+  { id: 'slack', name: 'Slack', cat: 'communication', icon: '💬', color: '#4A154B', bg: '#f5e6f5', desc: 'Map team conversations, channels, and collaboration patterns.', tags: ['messaging', 'teams', 'channels'], powers: 'Work, Relationships', status: 'connected', lastSync: '5 min ago', account: 'team-workspace', syncedItems: { Channels: 24, Messages: 8420, 'DM Threads': 67 }, scopes: ['Read messages', 'Read channels', 'Read users'] },
+  { id: 'discord', name: 'Discord', cat: 'communication', icon: '🎮', color: '#5865F2', bg: '#eef0ff', desc: 'Community participation data for relationship and interest mapping.', tags: ['community', 'participation data', 'cat: communication', 'powers: Career, Ana'], powers: 'Community, Interests', status: 'disconnected', scopes: ['Read messages', 'Read servers', 'Read roles'] },
+  { id: 'whatsapp', name: 'WhatsApp', cat: 'communication', icon: '📱', color: '#25D366', bg: '#e6faf1', desc: 'Personal and group chat analysis for relationship insights.', tags: ['personal', 'messaging', 'groups'], powers: 'Relationships', status: 'coming-soon', scopes: [] },
+  { id: 'telegram', name: 'Telegram', cat: 'communication', icon: '✈️', color: '#2CA5E0', bg: '#e6f4fb', desc: 'Channel and group participation for interest and network mapping.', tags: ['channels', 'groups', 'interests'], powers: 'Interests, Network', status: 'coming-soon', scopes: [] },
+  // ─── Health & Fitness ───────────────────────────────────────────────────────────────────
+  { id: 'apple-health', name: 'Apple Health', cat: 'health', icon: '❤️', color: '#FF3B30', bg: '#fde8e6', desc: 'Activity, sleep, heart rate, and nutrition data for habit insights.', tags: ['activity', 'sleep', 'nutrition', 'heart rate'], powers: 'Health, Habits, Energy', status: 'connected', lastSync: '30 min ago', account: 'alex@icloud.com', syncedItems: { 'Activity Rings': 365, 'Sleep Sessions': 287, 'Heart Rate Readings': 54320 }, scopes: ['Read activity', 'Read sleep', 'Read nutrition', 'Read heart rate'] },
+  { id: 'strava', name: 'Strava', cat: 'health', icon: '🏃', color: '#FC4C02', bg: '#fde8e6', desc: 'Workout history to correlate fitness with energy and productivity.', tags: ['running', 'cycling', 'workouts'], powers: 'Fitness, Energy, Habits', status: 'disconnected', scopes: ['Read activities', 'Read athlete profile'] },
+  { id: 'oura', name: 'Oura Ring', cat: 'health', icon: '💍', color: '#3D3D3D', bg: '#f4f4f4', desc: 'Deep sleep, readiness, and recovery scores for energy optimization.', tags: ['sleep', 'readiness', 'recovery'], powers: 'Energy, Focus, Health', status: 'coming-soon', scopes: [] },
+  { id: 'whoop', name: 'WHOOP', cat: 'health', icon: '💪', color: '#00C2FF', bg: '#e5f9ff', desc: 'Strain, recovery, and sleep performance for peak performance timing.', tags: ['strain', 'recovery', 'performance'], powers: 'Energy, Health, Timing', status: 'coming-soon', scopes: [] },
+  { id: 'peloton', name: 'Peloton', cat: 'health', icon: '🚴', color: '#CC1F3D', bg: '#fde8ea', desc: 'Workout consistency and performance metrics for habit tracking.', tags: ['cycling', 'consistency', 'workouts'], powers: 'Habits, Fitness', status: 'coming-soon', scopes: [] },
+  // ─── Finance ─────────────────────────────────────────────────────────────────────────────────
+  { id: 'plaid', name: 'Plaid / Bank', cat: 'finance', icon: '🏦', color: '#00B050', bg: '#e6f9f0', desc: 'Transaction history to map spending against values and goals.', tags: ['transactions', 'spending', 'budgets'], powers: 'Goals, Values, Habits', status: 'connected', lastSync: '1 hour ago', account: 'Chase & Amex linked', syncedItems: { Transactions: 3420, Categories: 28, 'Recurring Expenses': 18 }, scopes: ['Read transactions', 'Read account balances'] },
+  { id: 'coinbase', name: 'Coinbase', cat: 'finance', icon: '₿', color: '#0052FF', bg: '#e6eeff', desc: 'Crypto portfolio and transaction history.', tags: ['crypto', 'portfolio', 'DeFi'], powers: 'Finance, Goals', status: 'disconnected', scopes: ['Read accounts', 'Read transactions'] },
+  { id: 'robinhood', name: 'Robinhood', cat: 'finance', icon: '🏦', color: '#00C805', bg: '#e6fae6', desc: 'Investment portfolio and trading patterns.', tags: ['stocks', 'investing', 'portfolio'], powers: 'Finance, Goals', status: 'coming-soon', scopes: [] },
+  // ─── Social ──────────────────────────────────────────────────────────────────────────────────
+  { id: 'twitter', name: 'X / Twitter', cat: 'social', icon: '🐦', color: '#000000', bg: '#f4f4f4', desc: 'Tweet history and interests for value and personality mapping.', tags: ['tweets', 'interests', 'network'], powers: 'Values, Ideas, Network', status: 'disconnected', scopes: ['Read tweets', 'Read following', 'Read likes'] },
+  { id: 'linkedin', name: 'LinkedIn', cat: 'social', icon: '💼', color: '#0A66C2', bg: '#e6f0fb', desc: 'Professional network, endorsements, and career timeline.', tags: ['career', 'network', 'endorsements'], powers: 'Career, Network, Goals', status: 'connected', lastSync: '2 days ago', account: 'Alex Chen', syncedItems: { Connections: 847, 'Posts & Articles': 34, 'Job History': 5 }, scopes: ['Read profile', 'Read connections', 'Read activity'] },
+  { id: 'instagram', name: 'Instagram', cat: 'social', icon: '📸', color: '#E1306C', bg: '#fde8f0', desc: 'Visual diary and interests map from posts and saved content.', tags: ['photos', 'interests', 'lifestyle'], powers: 'Interests, Values', status: 'coming-soon', scopes: [] },
+  { id: 'reddit', name: 'Reddit', cat: 'social', icon: '🤖', color: '#FF4500', bg: '#fde8e0', desc: 'Subreddit participation and interest clustering.', tags: ['communities', 'interests', 'upvotes'], powers: 'Interests, Learning', status: 'coming-soon', scopes: [] },
+  // ─── Learning ──────────────────────────────────────────────────────────────────────────────── */
+  { id: 'kindle', name: 'Kindle / Books', cat: 'learning', icon: '📚', color: '#FF9900', bg: '#fff3e0', desc: 'Reading history, highlights, and notes for knowledge mapping.', tags: ['books', 'highlights', 'learning'], powers: 'Knowledge, Values, Ideas', status: 'disconnected', scopes: ['Read reading history', 'Read highlights', 'Read notes'] },
+  { id: 'spotify', name: 'Spotify', cat: 'learning', icon: '🎵', color: '#1DB954', bg: '#e6f9ed', desc: 'Music taste and podcast listening for energy and mood mapping.', tags: ['music', 'podcasts', 'mood'], powers: 'Energy, Mood, Interests', status: 'connected', lastSync: '1 hour ago', account: 'alex_spotify', syncedItems: { Playlists: 34, 'Liked Songs': 1247, 'Podcast Eps': 156 }, scopes: ['Read listening history', 'Read playlists', 'Read saved tracks'] },
+  { id: 'youtube', name: 'YouTube', cat: 'learning', icon: '🎥', color: '#FF0000', bg: '#fde8e8', desc: 'Watch history for interest, learning, and entertainment profiling.', tags: ['videos', 'interests', 'learning'], powers: 'Learning, Interests', status: 'disconnected', scopes: ['Read watch history', 'Read subscriptions', 'Read liked videos'] },
+  { id: 'duolingo', name: 'Duolingo', cat: 'learning', icon: '🦜', color: '#58CC02', bg: '#edfae6', desc: 'Language learning streaks and progress for habit insights.', tags: ['language', 'habits', 'streaks'], powers: 'Habits, Learning, Goals', status: 'coming-soon', scopes: [] },
+  { id: 'coursera', name: 'Coursera', cat: 'learning', icon: '🎓', color: '#0056D2', bg: '#e6eeff', desc: 'Course completions and skill acquisitions for growth mapping.', tags: ['courses', 'skills', 'certificates'], powers: 'Growth, Career, Knowledge', status: 'coming-soon', scopes: [] },
 ];
 
-const integrations = [
-  { name: 'Gmail with Calendar', desc: 'Sync events, deadlines, and meetings to your ZenSensei timeline', cat: 'calendar', powers: 'Goals, Academics, Relationships', icon: 'mail', color: '#EA4335', connected: false, expandDetail: 'Syncs all Google Calendar events, RSVP statuses, and recurring meetings.' },
-  { name: 'Google Tasks', desc: 'Import tasks and to-dos for unified task management', cat: 'calendar', powers: 'Goals, Productivity', icon: 'check-square', color: '#4285F4', connected: false, expandDetail: 'Pulls all task lists, due dates, and completion status.' },
-  { name: 'Strava', desc: 'Sync workouts, runs, cycling, and activity metrics', cat: 'health', powers: 'Health, Goals', icon: 'bike', color: '#FC4C02', connected: false, expandDetail: 'Full activity sync: distance, duration, elevation, heart rate zones, and personal records.' },
-  { name: 'Spotify', desc: 'Track listening habits, focus playlists, and mood music', cat: 'health', powers: 'Mental Wellness, Analytics', icon: 'music', color: '#1DB954', connected: false, expandDetail: 'Analyzes listening patterns, detects focus vs relaxation sessions, and mood correlation.' },
-  { name: 'Plaid', desc: 'Connect bank accounts for automatic transaction tracking', cat: 'finance', powers: 'Finance', icon: 'landmark', color: '#0A85EA', connected: false, expandDetail: 'Secure bank connection via Plaid. Tracks transactions, balances, and spending categories.' },
-  { name: 'Realtime Finance Data', desc: 'Live stock quotes, portfolio tracking, and market data', cat: 'finance', powers: 'Finance, Analytics', icon: 'trending-up', color: '#10B981', connected: true, expandDetail: 'Real-time stock prices, portfolio valuation, market news, and price alerts. Currently active.' },
-  { name: 'LinkedIn', desc: 'Track career milestones, connections, and professional growth', cat: 'career', powers: 'Career, Relationships', icon: 'linkedin', color: '#0A66C2', connected: false, expandDetail: 'Monitors profile views, connection growth, post engagement, and job market activity.' },
-  { name: 'GitHub', desc: 'Monitor coding activity, contributions, and project progress', cat: 'career', powers: 'Career, Learning', icon: 'github', color: '#6B7280', connected: false, expandDetail: 'Tracks commits, PRs, issues, and contribution streaks across all repositories.' },
-  { name: 'Notion', desc: 'Connect notes, databases, and knowledge base', cat: 'career', powers: 'Learning, Career, Goals', icon: 'file-text', color: '#000000', connected: false, expandDetail: 'Syncs Notion databases, pages, and properties.' },
-  { name: 'Slack', desc: 'Analyze communication patterns and team collaboration', cat: 'communication', powers: 'Career, Relationships', icon: 'message-square', color: '#4A154B', connected: false, expandDetail: 'Monitors channel activity, DM patterns, reaction usage, and response time metrics.' },
-  { name: 'Google Drive', desc: 'Access documents and files for cross-reference', cat: 'data', powers: 'All Domains', icon: 'hard-drive', color: '#4285F4', connected: false, expandDetail: 'Indexes Drive files, tracks document creation/editing patterns, and file sharing activity.' },
-  { name: 'Google Vertex AI', desc: 'AI/ML pipeline for insights generation', cat: 'developer', powers: 'AI Insights', icon: 'brain', color: '#8B5CF6', connected: false, expandDetail: 'Vertex AI models for prediction, classification, and cross-domain insight generation.' },
-];
-
-let activeCategory = 'all';
+// ============================================================
+// STATE
+// ============================================================
+let activeFilter = 'all';
 let searchQuery = '';
-let showConnectedOnly = false;
-let expandedCard = null;
+let selectedIntegration = null;
+let connectedIntegrations = new Set(
+  INTEGRATIONS.filter(i => i.status === 'connected').map(i => i.id)
+);
 
-const sidebarNav = document.getElementById('sidebarNav');
-const mobileNav = document.querySelector('.mobile-nav');
-const integrationsList = document.getElementById('integrationsList');
-const noResults = document.getElementById('noResults');
-const searchInput = document.getElementById('searchInput');
-const connectedFilter = document.getElementById('connectedFilter');
-const connectModal = document.getElementById('connectModal');
-const modalTitle = document.getElementById('modalTitle');
-const modalDesc = document.getElementById('modalDesc');
-const modalCloseBtn = document.getElementById('modalCloseBtn');
-const powersSection = document.getElementById('powersSection');
+// ============================================================
+// UTILITIES
+// ============================================================
+function showToast(msg, type = 'info') {
+  const tc = document.getElementById('toastContainer');
+  const t = document.createElement('div');
+  t.className = `toast toast-${type}`;
+  t.innerHTML = `<i class="ph ph-${type === 'success' ? 'check-circle' : type === 'error' ? 'x-circle' : 'info'}"></i> ${msg}`;
+  tc.appendChild(t);
+  setTimeout(() => t.remove(), 3500);
+}
 
+function formatSyncTime(t) {
+  if (!t) return 'Never';
+  return t;
+}
+
+// ============================================================
+// SIDEBAR
+// ============================================================
 function renderSidebar() {
-  sidebarNav.innerHTML = '';
-  mobileNav.innerHTML = '';
-  categories.forEach(cat => {
-    const count = cat.id === 'all' ? integrations.length : integrations.filter(i => i.cat === cat.id).length;
-    const btn = document.createElement('button');
-    btn.className = 'sidebar-item' + (activeCategory === cat.id ? ' active' : '');
-    btn.innerHTML = `<span class="emoji">${cat.emoji}</span><span class="label">${cat.label}</span><span class="count">${count}</span>`;
-    btn.addEventListener('click', () => setCategory(cat.id));
-    sidebarNav.appendChild(btn);
-    const pill = document.createElement('button');
-    pill.className = 'mobile-pill' + (activeCategory === cat.id ? ' active' : '');
-    pill.innerHTML = `${cat.emoji} ${cat.label.split(' ')[0]}`;
-    pill.addEventListener('click', () => setCategory(cat.id));
-    mobileNav.appendChild(pill);
+  const nav = document.getElementById('sidebar');
+  const navItems = [
+    { label: null, items: [{ icon: 'ph-house', text: 'Dashboard', href: 'index.html' }] },
+    { label: 'Me', items: [
+      { icon: 'ph-graph', text: 'Life Graph', href: '#' },
+      { icon: 'ph-target', text: 'Goals', href: '#' },
+      { icon: 'ph-calendar-check', text: 'Habits', href: '#' },
+      { icon: 'ph-person', text: 'Relationships', href: '#' },
+    ]},
+    { label: 'Intelligence', items: [
+      { icon: 'ph-sparkle', text: 'AI Insights', href: '#' },
+      { icon: 'ph-brain', text: 'Decisions', href: '#' },
+    ]},
+    { label: 'Data', items: [
+      { icon: 'ph-plugs-connected', text: 'Integrations', href: 'integrations.html', active: true },
+      { icon: 'ph-chart-bar', text: 'Analytics', href: '#' },
+    ]},
+  ];
+
+  nav.innerHTML = `
+    <div class="sidebar-logo">
+      <div class="logo-icon"><i class="ph ph-yin-yang"></i></div>
+      ZenSensei
+    </div>
+    <div class="nav-section">
+      ${navItems.map(section => `
+        ${section.label ? `<div class="nav-label">${section.label}</div>` : ''}
+        ${section.items.map(item => `
+          <a class="nav-item${item.active ? ' active' : ''}" href="${item.href}">
+            <i class="ph ${item.icon}"></i> ${item.text}
+          </a>
+        `).join('')}
+      `).join('')}
+    </div>
+  `;
+}
+
+// ============================================================
+// STATS
+// ============================================================
+function renderStats() {
+  const connected = INTEGRATIONS.filter(i => i.status === 'connected').length;
+  const errored = INTEGRATIONS.filter(i => i.status === 'error').length;
+  const available = INTEGRATIONS.filter(i => i.status === 'disconnected').length;
+  const total = INTEGRATIONS.length;
+
+  document.getElementById('statsBar').innerHTML = `
+    <div class="stat-card">
+      <div class="stat-value">${connected}</div>
+      <div class="stat-label">Connected</div>
+      <div class="stat-sub">${connected} active syncing</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-value">${available}</div>
+      <div class="stat-label">Available to Connect</div>
+      <div class="stat-sub">${total} total integrations</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-value">${errored > 0 ? `<span style="color:var(--error)">${errored}</span>` : '0'}</div>
+      <div class="stat-label">Needs Attention</div>
+      ${errored > 0 ? `<div class="stat-sub" style="color:var(--error)">${errored} require re-auth</div>` : '<div class="stat-sub">All healthy</div>'}
+    </div>
+    <div class="stat-card">
+      <div class="stat-value">67</div>
+      <div class="stat-label">Total Integrations</div>
+      <div class="stat-sub">In roadmap</div>
+    </div>
+  `;
+}
+
+// ============================================================
+// FILTERS
+// ============================================================
+const CATEGORIES = [
+  { key: 'all', label: 'All' },
+  { key: 'productivity', label: 'Productivity' },
+  { key: 'communication', label: 'Communication' },
+  { key: 'health', label: 'Health & Fitness' },
+  { key: 'finance', label: 'Finance' },
+  { key: 'social', label: 'Social' },
+  { key: 'learning', label: 'Learning' },
+  { key: 'connected', label: '✓ Connected', special: true },
+];
+
+function renderFilters() {
+  document.getElementById('filterRow').innerHTML = CATEGORIES.map(c =>
+    `<button class="filter-tab${activeFilter === c.key ? ' active' : ''}" data-filter="${c.key}">${c.label}</button>`
+  ).join('');
+
+  document.querySelectorAll('.filter-tab').forEach(btn => {
+    btn.addEventListener('click', () => {
+      activeFilter = btn.dataset.filter;
+      renderFilters();
+      renderGrid();
+    });
   });
 }
 
-function getCategoryColor(catId) { const cat = categories.find(c => c.id === catId); return cat ? `var(${cat.color})` : 'var(--color-primary)'; }
-function getCategoryLabel(catId) { const cat = categories.find(c => c.id === catId); return cat ? cat.label : ''; }
-
+// ============================================================
+// GRID
+// ============================================================
 function getFilteredIntegrations() {
-  return integrations.filter(i => {
-    const matchesCategory = activeCategory === 'all' || i.cat === activeCategory;
-    const matchesSearch = !searchQuery || i.name.toLowerCase().includes(searchQuery) || i.desc.toLowerCase().includes(searchQuery) || i.powers.toLowerCase().includes(searchQuery);
-    const matchesConnected = !showConnectedOnly || i.connected;
-    return matchesCategory && matchesSearch && matchesConnected;
-  });
+  let list = INTEGRATIONS;
+  if (activeFilter === 'connected') {
+    list = list.filter(i => i.status === 'connected' || i.status === 'error');
+  } else if (activeFilter !== 'all') {
+    list = list.filter(i => i.cat === activeFilter);
+  }
+  if (searchQuery) {
+    const q = searchQuery.toLowerCase();
+    list = list.filter(i =>
+      i.name.toLowerCase().includes(q) ||
+      i.desc.toLowerCase().includes(q) ||
+      (i.tags || []).some(t => t.includes(q))
+    );
+  }
+  return list;
 }
 
-function renderIntegrations() {
+function renderCard(integration) {
+  const { id, name, icon, color, bg, desc, tags, powers, status, lastSync, account, errorMsg } = integration;
+  const isConnected = status === 'connected';
+  const isError = status === 'error';
+  const isComingSoon = status === 'coming-soon';
+
+  const badgeClass = isConnected ? 'badge-connected' : isError ? 'badge-error' : isComingSoon ? 'badge-coming-soon' : 'badge-disconnected';
+  const badgeText = isConnected ? 'Connected' : isError ? 'Error' : isComingSoon ? 'Coming Soon' : 'Not Connected';
+
+  const actionButtons = isConnected
+    ? `<button class="btn btn-secondary btn-sm" data-action="sync" data-id="${id}"><i class="ph ph-arrows-clockwise"></i> Sync</button>
+       <button class="btn btn-secondary btn-sm" data-action="disconnect" data-id="${id}"><i class="ph ph-plugs"></i></button>`
+    : isError
+    ? `<button class="btn btn-primary btn-sm" data-action="reauth" data-id="${id}"><i class="ph ph-key"></i> Re-authorize</button>`
+    : isComingSoon
+    ? `<button class="btn btn-secondary btn-sm" disabled>Notify Me</button>`
+    : `<button class="btn btn-primary btn-sm" data-action="connect" data-id="${id}"><i class="ph ph-plug"></i> Connect</button>`;
+
+  return `
+    <div class="integration-card${isConnected ? ' connected' : ''}" data-id="${id}" role="button" tabindex="0" aria-label="${name} integration">
+      <div class="card-header">
+        <div class="service-icon" style="background:${bg};color:${color};">${icon}</div>
+        <span class="connection-badge ${badgeClass}">${badgeText}</span>
+      </div>
+      <div class="power-flow">
+        <div class="pf-icon" style="background:${bg};"></div>
+        <div>
+          <div class="pf-label">${name}</div>
+          ${powers ? `<div class="powers-label">Powers: ${powers}</div>` : ''}
+        </div>
+      </div>
+      <div class="service-name">${name}</div>
+      <div class="service-desc">${desc}</div>
+      <div class="service-tags">${(tags || []).map(t => `<span class="service-tag">${t}</span>`).join('')}</div>
+      ${isConnected && lastSync ? `<div class="last-sync"><i class="ph ph-clock"></i> Last sync: ${lastSync}</div>` : ''}
+      ${isError && errorMsg ? `<div class="last-sync" style="color:var(--error)"><i class="ph ph-warning"></i> ${errorMsg}</div>` : ''}
+      <div class="card-actions">${actionButtons}</div>
+      ${isComingSoon ? '<div class="coming-soon-overlay"><div class="coming-soon-icon"><i class="ph ph-clock"></i></div><div class="coming-soon-text">Coming Soon</div></div>' : ''}
+    </div>
+  `;
+}
+
+function renderGrid() {
   const filtered = getFilteredIntegrations();
-  integrationsList.innerHTML = '';
-  if (filtered.length === 0) { noResults.classList.add('show'); powersSection.style.display = 'none'; return; }
-  noResults.classList.remove('show');
-  powersSection.style.display = '';
-  if (activeCategory === 'all') {
-    const grouped = {};
-    categories.forEach(c => { if (c.id === 'all') return; const items = filtered.filter(i => i.cat === c.id); if (items.length > 0) grouped[c.id] = items; });
-    Object.entries(grouped).forEach(([catId, items]) => {
-      const cat = categories.find(c => c.id === catId);
-      const header = document.createElement('div'); header.className = 'category-header';
-      header.innerHTML = `<span class="cat-emoji">${cat.emoji}</span><h2>${cat.label}</h2><span class="cat-count">${items.length} integration${items.length > 1 ? 's' : ''}</span>`;
-      integrationsList.appendChild(header);
-      const grid = document.createElement('div'); grid.className = 'cards-grid';
-      items.forEach(i => grid.appendChild(createCard(i)));
-      integrationsList.appendChild(grid);
-    });
-  } else {
-    const cat = categories.find(c => c.id === activeCategory);
-    const header = document.createElement('div'); header.className = 'category-header';
-    header.innerHTML = `<span class="cat-emoji">${cat.emoji}</span><h2>${cat.label}</h2><span class="cat-count">${filtered.length} integration${filtered.length > 1 ? 's' : ''}</span>`;
-    integrationsList.appendChild(header);
-    const grid = document.createElement('div'); grid.className = 'cards-grid';
-    filtered.forEach(i => grid.appendChild(createCard(i)));
-    integrationsList.appendChild(grid);
+  const grid = document.getElementById('integrationsGrid');
+  if (!filtered.length) {
+    grid.innerHTML = `<div style="grid-column:1/-1;text-align:center;padding:40px;color:var(--text-muted);"><i class="ph ph-magnifying-glass" style="font-size:32px;display:block;margin-bottom:8px;"></i>No integrations found</div>`;
+    return;
   }
-  if (window.lucide) lucide.createIcons();
-}
+  grid.innerHTML = filtered.map(renderCard).join('');
 
-function createCard(integration) {
-  const card = document.createElement('div');
-  card.className = 'integration-card' + (integration.connected ? ' connected' : '');
-  card.style.setProperty('--accent-color', getCategoryColor(integration.cat));
-  const isExpanded = expandedCard === integration.name;
-  card.innerHTML = `<div class="card-top"><div class="app-icon" style="background:${integration.color};"><i data-lucide="${integration.icon}" style="width:20px;height:20px;"></i></div><div class="card-info"><div class="card-name">${integration.name}</div><div class="card-desc">${integration.desc}</div></div></div><div class="card-meta"><span class="cat-pill">${getCategoryLabel(integration.cat).split('&')[0].trim()}</span><span class="powers-line"><strong>Powers:</strong> ${integration.powers}</span></div><div class="card-actions">${integration.connected ? '<span class="connected-badge">Connected ✓</span>' : `<button class="connect-btn" data-app="${integration.name}"><i data-lucide="plug-2" style="width:12px;height:12px;"></i> Connect</button>`}</div><div class="card-expand ${isExpanded ? 'show' : ''}"><strong>Sync details:</strong> ${integration.expandDetail}</div>`;
-  card.addEventListener('click', (e) => {
-    if (e.target.closest('.connect-btn')) return;
-    const expand = card.querySelector('.card-expand');
-    if (expandedCard === integration.name) { expandedCard = null; expand.classList.remove('show'); }
-    else { document.querySelectorAll('.card-expand.show').forEach(el => el.classList.remove('show')); expandedCard = integration.name; expand.classList.add('show'); }
+  // Card click → detail panel
+  grid.querySelectorAll('.integration-card').forEach(card => {
+    card.addEventListener('click', (e) => {
+      if (e.target.closest('[data-action]')) return;
+      openDetailPanel(card.dataset.id);
+    });
+    card.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        if (!e.target.closest('[data-action]')) openDetailPanel(card.dataset.id);
+      }
+    });
   });
-  const connectBtn = card.querySelector('.connect-btn');
-  if (connectBtn) { connectBtn.addEventListener('click', (e) => { e.stopPropagation(); showConnectModal(integration.name); }); }
-  return card;
+
+  // Action buttons
+  grid.querySelectorAll('[data-action]').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      handleAction(btn.dataset.action, btn.dataset.id);
+    });
+  });
 }
 
-function setCategory(catId) { activeCategory = catId; expandedCard = null; renderSidebar(); renderIntegrations(); document.querySelector('.main').scrollTop = 0; }
-function showConnectModal(appName) { modalTitle.textContent = `Connecting ${appName}...`; modalDesc.textContent = `This would redirect you to ${appName}'s authorization page. ZenSensei uses OAuth 2.0 for secure connections.`; connectModal.classList.add('show'); }
-function closeModal() { connectModal.classList.remove('show'); }
+// ============================================================
+// ACTIONS
+// ============================================================
+function handleAction(action, id) {
+  const integration = INTEGRATIONS.find(i => i.id === id);
+  if (!action || !integration) return;
 
-searchInput.addEventListener('input', (e) => { searchQuery = e.target.value.toLowerCase().trim(); expandedCard = null; renderIntegrations(); });
-connectedFilter.addEventListener('click', () => { showConnectedOnly = !showConnectedOnly; connectedFilter.classList.toggle('active', showConnectedOnly); expandedCard = null; renderIntegrations(); });
-modalCloseBtn.addEventListener('click', closeModal);
-connectModal.addEventListener('click', (e) => { if (e.target === connectModal) closeModal(); });
-document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && connectModal.classList.contains('show')) closeModal(); });
-
-(function() {
-  const toggle = document.querySelector('[data-theme-toggle]');
-  const root = document.documentElement;
-  let theme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
-  root.setAttribute('data-theme', theme);
-  if (toggle) {
-    toggle.addEventListener('click', () => {
-      theme = theme === 'dark' ? 'light' : 'dark';
-      root.setAttribute('data-theme', theme);
-      toggle.setAttribute('aria-label', `Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`);
-      const icon = toggle.querySelector('[data-lucide]');
-      if (icon) { icon.setAttribute('data-lucide', theme === 'dark' ? 'sun' : 'moon'); if (window.lucide) lucide.createIcons(); }
-    });
+  if (action === 'connect' || action === 'reauth') {
+    showToast(`Connecting to ${integration.name}...`, 'info');
+    setTimeout(() => {
+      integration.status = 'connected';
+      integration.lastSync = 'Just now';
+      integration.account = 'demo@zensensei.com';
+      connectedIntegrations.add(id);
+      renderStats();
+      renderGrid();
+      showToast(`${integration.name} connected successfully!`, 'success');
+    }, 1200);
+  } else if (action === 'disconnect') {
+    integration.status = 'disconnected';
+    delete integration.lastSync;
+    delete integration.account;
+    connectedIntegrations.delete(id);
+    closeDetailPanel();
+    renderStats();
+    renderGrid();
+    showToast(`${integration.name} disconnected`, 'info');
+  } else if (action === 'sync') {
+    showToast(`Syncing ${integration.name}...`, 'info');
+    setTimeout(() => {
+      integration.lastSync = 'Just now';
+      renderGrid();
+      showToast(`${integration.name} synced successfully`, 'success');
+    }, 900);
   }
-})();
+}
 
+// ============================================================
+// DETAIL PANEL
+// ============================================================
+function openDetailPanel(id) {
+  const integration = INTEGRATIONS.find(i => i.id === id);
+  if (!integration) return;
+  selectedIntegration = integration;
+
+  const { name, icon, color, bg, desc, status, lastSync, account, syncedItems, scopes, tags } = integration;
+  const isConnected = status === 'connected';
+  const isError = status === 'error';
+
+  const panel = document.getElementById('detailPanel');
+  panel.innerHTML = `
+    <div class="panel-header">
+      <div class="panel-header-left">
+        <div class="panel-icon" style="background:${bg};color:${color};">${icon}</div>
+        <div>
+          <div class="panel-title">${name}</div>
+          <div class="panel-subtitle">${desc.substring(0, 50)}...</div>
+        </div>
+      </div>
+      <button class="btn btn-secondary btn-icon" id="panelClose" aria-label="Close panel"><i class="ph ph-x"></i></button>
+    </div>
+    <div class="panel-body">
+      ${isConnected ? `
+        <div class="connected-info">
+          <i class="ph ph-check-circle" style="font-size:18px;"></i>
+          <div>
+            <div class="connected-info-text">Connected as ${account || 'your account'}</div>
+            <div class="connected-info-sub">Last sync: ${formatSyncTime(lastSync)}</div>
+          </div>
+        </div>
+      ` : isError ? `
+        <div class="connected-info" style="background:var(--error-light);border-color:var(--error);">
+          <i class="ph ph-warning" style="font-size:18px;color:var(--error);"></i>
+          <div>
+            <div class="connected-info-text">Authorization expired</div>
+            <div class="connected-info-sub">Please re-authorize to continue syncing</div>
+          </div>
+        </div>
+      ` : ''}
+
+      ${isConnected && syncedItems ? `
+        <div class="panel-section">
+          <div class="panel-section-title">Synced Data</div>
+          <div class="data-types">
+            ${Object.entries(syncedItems).map(([k, v]) => `
+              <div class="data-type-row">
+                <span class="data-type-label">${k}</span>
+                <span class="data-type-count">${v.toLocaleString()}</span>
+              </div>
+            `).join('')}
+          </div>
+        </div>
+      ` : ''}
+
+      <div class="panel-section">
+        <div class="panel-section-title">Permissions Required</div>
+        <div class="scope-list">
+          ${(scopes || []).map(s => `<div class="scope-item"><i class="ph ph-check"></i> ${s}</div>`).join('')}
+        </div>
+        <div class="permission-note" style="margin-top:10px;">
+          ZenSensei requests read-only access. We never write, post, or modify your data in connected services.
+        </div>
+      </div>
+
+      <div class="panel-section">
+        <div class="panel-section-title">Graph Powers</div>
+        <div class="service-tags">
+          ${(tags || []).map(t => `<span class="service-tag">${t}</span>`).join('')}
+        </div>
+      </div>
+    </div>
+    <div class="panel-footer">
+      ${isConnected
+        ? `<button class="btn btn-secondary" data-action="sync" data-id="${integration.id}"><i class="ph ph-arrows-clockwise"></i> Sync Now</button>
+           <button class="btn btn-secondary" data-action="disconnect" data-id="${integration.id}" style="color:var(--error);"><i class="ph ph-plugs"></i> Disconnect</button>`
+        : isError
+        ? `<button class="btn btn-primary" data-action="reauth" data-id="${integration.id}"><i class="ph ph-key"></i> Re-authorize</button>`
+        : `<button class="btn btn-primary" data-action="connect" data-id="${integration.id}"><i class="ph ph-plug"></i> Connect ${name}</button>`
+      }
+    </div>
+  `;
+
+  panel.setAttribute('aria-hidden', 'false');
+  panel.classList.add('open');
+  document.getElementById('overlay').classList.add('visible');
+
+  document.getElementById('panelClose').addEventListener('click', closeDetailPanel);
+  panel.querySelectorAll('[data-action]').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      handleAction(btn.dataset.action, btn.dataset.id);
+      closeDetailPanel();
+    });
+  });
+}
+
+function closeDetailPanel() {
+  const panel = document.getElementById('detailPanel');
+  panel.classList.remove('open');
+  panel.setAttribute('aria-hidden', 'true');
+  document.getElementById('overlay').classList.remove('visible');
+  selectedIntegration = null;
+}
+
+// ============================================================
+// SYNC ALL
+// ============================================================
+document.addEventListener('DOMContentLoaded', () => {
+  document.getElementById('syncAllBtn').addEventListener('click', () => {
+    const connected = INTEGRATIONS.filter(i => i.status === 'connected');
+    if (!connected.length) { showToast('No connected integrations to sync', 'info'); return; }
+    showToast(`Syncing ${connected.length} integrations...`, 'info');
+    setTimeout(() => {
+      connected.forEach(i => i.lastSync = 'Just now');
+      renderGrid();
+      showToast('All integrations synced successfully', 'success');
+    }, 1500);
+  });
+
+  document.getElementById('overlay').addEventListener('click', closeDetailPanel);
+
+  document.getElementById('searchInput').addEventListener('input', (e) => {
+    searchQuery = e.target.value;
+    renderGrid();
+  });
+
+  // Theme toggle
+  const themeBtn = document.getElementById('themeBtn');
+  const saved = localStorage.getItem('zensensei-theme') || 'light';
+  document.documentElement.setAttribute('data-theme', saved);
+  themeBtn.querySelector('i').className = saved === 'dark' ? 'ph ph-sun' : 'ph ph-moon';
+
+  themeBtn.addEventListener('click', () => {
+    const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+    const newTheme = isDark ? 'light' : 'dark';
+    document.documentElement.setAttribute('data-theme', newTheme);
+    localStorage.setItem('zensensei-theme', newTheme);
+    themeBtn.querySelector('i').className = newTheme === 'dark' ? 'ph ph-sun' : 'ph ph-moon';
+  });
+});
+
+// ============================================================
+// INIT
+// ============================================================
 function init() {
   renderSidebar();
   renderIntegrations();
-  if (window.lucide) lucide.createIcons();
-  else { document.querySelector('script[src*="lucide"]')?.addEventListener('load', () => { lucide.createIcons(); }); }
 }
 
-if (document.readyState === 'loading') { document.addEventListener('DOMContentLoaded', () => { setTimeout(init, 100); }); }
-else { setTimeout(init, 100); }
+function renderIntegrations() {
+  renderStats();
+  renderFilters();
+  renderGrid();
+}
+
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', () => {
+    setTimeout(init, 100);
+  });
+} else {
+  setTimeout(init, 100);
+}
 </script>
 </body>
 </html>
