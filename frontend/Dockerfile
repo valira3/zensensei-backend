@@ -1,26 +1,29 @@
-# ─── Frontend Dockerfile ────────────────────────────────────────────────────
-# Serves the static ZenSensei web app via nginx.
-# Build context: repo root  (docker build -f frontend/Dockerfile .)
-# ────────────────────────────────────────────────────────────────────────────
+# ─── ZenSensei Frontend ───────────────────────────────────────────────────────
+# Serves the static SPA via nginx with API proxy to the gateway service.
+# ──────────────────────────────────────────────────────────────────────────────
 
-# ── Stage 1: nothing to compile — static HTML/CSS/JS ────────────────────────
-# We skip a Node build stage since there's no bundler.
-# If you add a build step later (Vite, esbuild, etc.), insert it here.
+FROM nginx:1.25-alpine
 
-FROM nginx:1.27-alpine
+# ── Install envsubst (part of gettext) ─────────────────────────────────────
+RUN apk add --no-cache gettext
 
-# ── Remove default nginx content ─────────────────────────────────────────────
-RUN rm -rf /usr/share/nginx/html/*
-
-# ── Copy static assets ───────────────────────────────────────────────────────
+# ── Copy static assets ─────────────────────────────────────────────────────
 COPY frontend/public/ /usr/share/nginx/html/
 
-# ── Custom nginx config ───────────────────────────────────────────────────────
-COPY frontend/nginx.conf /etc/nginx/conf.d/default.conf
+# ── Copy nginx config template ──────────────────────────────────────────────
+COPY frontend/nginx.conf /etc/nginx/templates/default.conf.template
 
-# ── Health-check endpoint (nginx serves a 200 on /health) ────────────────────
-# Handled in nginx.conf
+# ── Default environment variables ──────────────────────────────────────────
+# PORT is injected by Railway at runtime
+ENV PORT=3000
+ENV API_GATEWAY_URL=http://gateway.railway.internal:4000
 
-EXPOSE 80
+EXPOSE 3000
 
-CMD ["nginx", "-g", "daemon off;"]
+# ── Health check ───────────────────────────────────────────────────────────
+HEALTHCHECK --interval=15s --timeout=5s --retries=3 --start-period=10s \
+    CMD wget -q --spider http://localhost:${PORT}/health || exit 1
+
+# ── Start nginx with env substitution ────────────────────────────────────
+# envsubst replaces ${PORT} and ${API_GATEWAY_URL} in the template
+CMD ["/bin/sh", "-c", "envsubst '${PORT} ${API_GATEWAY_URL}' < /etc/nginx/templates/default.conf.template > /etc/nginx/conf.d/default.conf && nginx -g 'daemon off;'"]
