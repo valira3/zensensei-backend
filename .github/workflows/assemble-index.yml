@@ -1,11 +1,8 @@
 name: Assemble index.html
-
 on:
   push:
     paths:
-      - 'frontend/public/_index_part*.html'
-  workflow_dispatch:
-
+      - 'frontend/public/html_chunk_aa'
 jobs:
   assemble:
     runs-on: ubuntu-latest
@@ -13,39 +10,31 @@ jobs:
       contents: write
     steps:
       - uses: actions/checkout@v4
-        with:
-          ref: main
-
-      - name: Check if all parts exist
-        id: check
+      - name: Assemble index.html from chunks
         run: |
-          if [ -f frontend/public/_index_part1.html ] && \
-             [ -f frontend/public/_index_part2.html ] && \
-             [ -f frontend/public/_index_part3.html ] && \
-             [ -f frontend/public/_index_part4.html ]; then
-            echo "all_parts=true" >> $GITHUB_OUTPUT
-          else
-            echo "all_parts=false" >> $GITHUB_OUTPUT
-            echo "Not all parts found, skipping assembly"
-          fi
-
-      - name: Assemble index.html from parts
-        if: steps.check.outputs.all_parts == 'true'
-        run: |
-          cat frontend/public/_index_part1.html \
-              frontend/public/_index_part2.html \
-              frontend/public/_index_part3.html \
-              frontend/public/_index_part4.html \
-              > frontend/public/index.html
-          echo "Assembled index.html: $(wc -c < frontend/public/index.html) bytes"
-
-      - name: Remove part files and commit
-        if: steps.check.outputs.all_parts == 'true'
-        run: |
-          rm frontend/public/_index_part*.html
+          cat frontend/public/html_chunk_aa \
+              frontend/public/html_chunk_ab \
+              frontend/public/html_chunk_ac \
+              frontend/public/html_chunk_ad > frontend/public/index.html
+          
+          # Verify it assembled correctly
+          wc -c frontend/public/index.html
+          
+          # Remove chunk files
+          rm -f frontend/public/html_chunk_aa
+          rm -f frontend/public/html_chunk_ab
+          rm -f frontend/public/html_chunk_ac
+          rm -f frontend/public/html_chunk_ad
+          
+          # Commit
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add frontend/public/index.html
-          git rm frontend/public/_index_part*.html 2>/dev/null || true
-          git commit -m "Assemble frontend/public/index.html from parts [skip ci]"
+          git rm frontend/public/html_chunk_aa frontend/public/html_chunk_ab frontend/public/html_chunk_ac frontend/public/html_chunk_ad
+          git commit -m "Complete frontend: auth, settings, accessibility, error states, ToS/Privacy"
           git push
+      - name: Delete this workflow
+        run: |
+          git rm .github/workflows/assemble-index.yml || true
+          git commit -m "Remove assembly workflow" || true
+          git push || true
